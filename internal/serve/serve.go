@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/srmdn/orbital/internal/scan"
 )
@@ -22,11 +23,9 @@ var templatesFS embed.FS
 func Run() error {
 	home := os.Getenv("HOME")
 
-	fmt.Print("\n  scanning your mac...")
-	data := scanAndBuild(home)
-	fmt.Println(" done.")
-
 	mu := &sync.RWMutex{}
+	ready := &atomic.Bool{}
+	var dataPtr *pageData
 
 	tmpl := template.Must(template.New("index.html").Funcs(template.FuncMap{
 		"formatSize":   scan.FormatSize,
@@ -41,18 +40,26 @@ func Run() error {
 			http.NotFound(w, r)
 			return
 		}
-		mu.RLock()
-		d := data
-		mu.RUnlock()
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if !ready.Load() {
+			tmpl.Execute(w, &pageData{Home: home, Loading: true})
+			return
+		}
+		mu.RLock()
+		d := dataPtr
+		mu.RUnlock()
 		tmpl.Execute(w, d)
 	})
 
 	mux.HandleFunc("/api/scan", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if !ready.Load() {
+			json.NewEncoder(w).Encode(map[string]interface{}{"loading": true})
+			return
+		}
 		mu.RLock()
 		defer mu.RUnlock()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(data)
+		json.NewEncoder(w).Encode(dataPtr)
 	})
 
 	mux.HandleFunc("/api/refresh", func(w http.ResponseWriter, r *http.Request) {
@@ -60,9 +67,12 @@ func Run() error {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		ready.Store(false)
+		data := scanAndBuild(home)
 		mu.Lock()
-		data = scanAndBuild(home)
+		dataPtr = data
 		mu.Unlock()
+		ready.Store(true)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
@@ -84,7 +94,7 @@ func Run() error {
 
 		mu.RLock()
 		var entries []scan.Entry
-		for _, tg := range data.Tiers {
+		for _, tg := range dataPtr.Tiers {
 			entries = append(entries, tg.Entries...)
 		}
 		mu.RUnlock()
@@ -108,9 +118,12 @@ func Run() error {
 			}
 		}
 
+		ready.Store(false)
+		data := scanAndBuild(home)
 		mu.Lock()
-		data = scanAndBuild(home)
+		dataPtr = data
 		mu.Unlock()
+		ready.Store(true)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -128,11 +141,21 @@ func Run() error {
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://localhost:%d", port)
 
-	fmt.Printf("  🚀 orbital dashboard → %s\n", url)
-	fmt.Println("  Press Ctrl+C to stop.")
+	fmt.Printf("\n  🚀 orbital dashboard → %s\n", url)
+	fmt.Println("  scanning...")
 
 	go func() {
 		exec.Command("open", url).Run()
+	}()
+
+	go func() {
+		data := scanAndBuild(home)
+		mu.Lock()
+		dataPtr = data
+		mu.Unlock()
+		ready.Store(true)
+		fmt.Println("  ✅ scan complete.")
+		fmt.Println("  Press Ctrl+C to stop.")
 	}()
 
 	return http.Serve(listener, mux)
@@ -176,7 +199,7 @@ func scanAndBuild(home string) *pageData {
 
 	return &pageData{
 		Home:     home,
-		Tiers:   groups,
+		Tiers:    groups,
 		AllEmpty: allEmpty,
 		MaxSize:  maxSize,
 		Totals: totals{
@@ -205,6 +228,7 @@ type pageData struct {
 	MaxSize  int64
 	Totals   totals
 	GitTrap  gitTrap
+	Loading  bool
 }
 
 type totals struct {

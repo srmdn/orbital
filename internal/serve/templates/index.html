@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{{if .Loading}}<meta http-equiv="refresh" content="5">{{end}}
 <title>orbital — disk dashboard</title>
 <style>
   :root {
@@ -134,9 +135,122 @@
   #clean-confirm button:last-of-type { background: var(--surface); color: var(--text); }
   #clean-status { font-size: 13px; }
   .clean-note { margin-top: 12px; font-size: 12px; }
+
+  /* ---- Tier breakdown chart ---- */
+  .tier-breakdown {
+    margin-bottom: 32px;
+  }
+  .tier-breakdown .tier-label {
+    color: var(--muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tier-bar {
+    display: flex;
+    height: 24px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .tier-bar.empty {
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+  }
+  .tier-bar.empty::after {
+    content: "No data";
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .tier-seg {
+    position: relative;
+    height: 100%;
+    flex-basis: 0;
+    min-width: 2px;
+    transition: opacity 0.15s;
+    cursor: default;
+  }
+  .tier-seg:hover {
+    opacity: 0.8;
+    cursor: pointer;
+  }
+  .tier-seg.t1 { background: var(--tier1); }
+  .tier-seg.t2 { background: var(--tier2); }
+  .tier-seg.t3 { background: var(--tier3); }
+  .tier-seg.t4 { background: var(--tier4); }
+
+  /* Tooltip on hover */
+  .tier-seg:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .tier-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .legend-dot.t1 { background: var(--tier1); }
+  .legend-dot.t2 { background: var(--tier2); }
+  .legend-dot.t3 { background: var(--tier3); }
+  .legend-dot.t4 { background: var(--tier4); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--tier1);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  .loading-page {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; gap: 16px;
+  }
+  .loading-text { font-size: 18px; font-weight: 500; }
+  .loading-sub { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
+{{if .Loading}}
+<div class="loading-page">
+  <div class="spinner"></div>
+  <p class="loading-text">orbital is scanning your disk...</p>
+  <p class="loading-sub">This usually takes 10-30 seconds</p>
+</div>
+{{else}}
 <div class="container">
 
 <header>
@@ -176,6 +290,22 @@
     <div class="label">Manual review (T4)</div>
     <div class="value">{{.Totals.Tier4 | formatSize}}</div>
     <div class="sub">review before acting</div>
+  </div>
+</div>
+
+<div class="tier-breakdown">
+  <div class="tier-label">Tier breakdown</div>
+  <div class="tier-bar">
+    {{if .Totals.Tier1}}<div class="tier-seg t1" style="flex-grow: {{.Totals.Tier1}}" data-tooltip="T1 Safe · {{.Totals.Tier1 | formatSize}}"></div>{{end}}
+    {{if .Totals.Tier2}}<div class="tier-seg t2" style="flex-grow: {{.Totals.Tier2}}" data-tooltip="T2 Reinstall · {{.Totals.Tier2 | formatSize}}"></div>{{end}}
+    {{if .Totals.Tier3}}<div class="tier-seg t3" style="flex-grow: {{.Totals.Tier3}}" data-tooltip="T3 App-level · {{.Totals.Tier3 | formatSize}}"></div>{{end}}
+    {{if .Totals.Tier4}}<div class="tier-seg t4" style="flex-grow: {{.Totals.Tier4}}" data-tooltip="T4 Manual · {{.Totals.Tier4 | formatSize}}"></div>{{end}}
+  </div>
+  <div class="tier-legend">
+    <span><span class="legend-dot t1"></span>T1 Safe</span>
+    <span><span class="legend-dot t2"></span>T2 Reinstall</span>
+    <span><span class="legend-dot t3"></span>T3 App-level</span>
+    <span><span class="legend-dot t4"></span>T4 Manual</span>
   </div>
 </div>
 
@@ -293,5 +423,6 @@
     }
   }
 </script>
+{{end}}
 </body>
 </html>
