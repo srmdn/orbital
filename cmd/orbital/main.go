@@ -26,7 +26,7 @@ func main() {
 			scan.Run()
 		}
 	case "serve", "ui":
-		if err := serve.Run(); err != nil {
+		if err := serve.Run(version); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}

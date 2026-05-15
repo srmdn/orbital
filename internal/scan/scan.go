@@ -130,6 +130,8 @@ func Run() {
 	fmt.Println()
 	home := os.Getenv("HOME")
 
+	checkGitTrapInternal(home)
+
 	entries, t1, t2, t3, t4 := Collect(home)
 
 	var t1Entries, t2Entries, t3Entries, t4Entries []Entry
@@ -146,14 +148,27 @@ func Run() {
 		}
 	}
 
-	printTier(TierSafe, t1Entries)
-	fmt.Println()
-	printTier(TierReinst, t2Entries)
-	fmt.Println()
-	printTier(TierApp, t3Entries)
-	fmt.Println()
-	printTier(TierManual, t4Entries)
-	fmt.Println()
+	tiers := []struct {
+		tier    int
+		entries []Entry
+	}{
+		{TierSafe, t1Entries},
+		{TierReinst, t2Entries},
+		{TierApp, t3Entries},
+		{TierManual, t4Entries},
+	}
+
+	first := true
+	for _, t := range tiers {
+		if len(t.entries) == 0 {
+			continue
+		}
+		if !first {
+			fmt.Println()
+		}
+		printTier(t.tier, t.entries)
+		first = false
+	}
 
 	if count, totalMB := ScanStaleDMGs(home); count > 0 {
 		fmt.Println("  ── Stale disk images ──")
@@ -173,31 +188,47 @@ func Run() {
 		fmt.Println()
 	}
 
-	checkGitTrapInternal(home)
-
 	total := t1 + t2 + t3 + t4
 	if total > 0 {
 		fmt.Println("  ────────────────────────────────────────────────")
 		fmt.Printf("  Total reclaimable: %s\n", FormatSize(total))
 		fmt.Println()
-		fmt.Println("  Run 'orbital clean' for interactive cleanup (Tiers 1-2 only)")
-		fmt.Println("  Tiers 3-4 require app-level or manual action — see docs")
-		fmt.Println("  Reference: docs/cleanup-guide.md")
+		fmt.Println("  'orbital clean' — free Tiers 1-2  ·  'orbital hogs' — full list  ·  docs/cleanup-guide.md")
 	}
 }
 
 func printTier(tier int, entries []Entry) {
-	fmt.Printf("  ── TIER %d: %s ──\n", tier, TierLabel(tier))
-	if len(entries) == 0 {
-		fmt.Println("    (nothing found)")
-		return
-	}
+	var tierTotal int64
 	for _, e := range entries {
+		tierTotal += e.SizeMB
+	}
+	fmt.Printf("  ── TIER %d: %s · %s ──\n", tier, TierLabel(tier), FormatSize(tierTotal))
+
+	const maxItems = 5
+	shown := entries
+	if len(entries) > maxItems {
+		shown = entries[:maxItems]
+	}
+
+	for _, e := range shown {
+		mark := "✓"
+		if !e.Cleanable {
+			mark = "🔒"
+		}
 		stackTag := ""
 		if e.StackTag != "" {
 			stackTag = " [" + e.StackTag + "]"
 		}
-		fmt.Printf("    %-6s  %-25s  %s%s\n", FormatSize(e.SizeMB), e.Label, e.Description, stackTag)
+		fmt.Printf("    %s  %-6s  %-25s  %s%s\n", mark, FormatSize(e.SizeMB), e.Label, e.Description, stackTag)
+	}
+
+	if len(entries) > maxItems {
+		var restMB int64
+		for _, e := range entries[maxItems:] {
+			restMB += e.SizeMB
+		}
+		fmt.Printf("    ... +%d more (%s)\n", len(entries)-maxItems, FormatSize(restMB))
+		fmt.Println("    Run 'orbital hogs' for full breakdown")
 	}
 }
 

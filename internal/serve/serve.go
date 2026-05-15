@@ -20,7 +20,7 @@ import (
 //go:embed templates/*
 var templatesFS embed.FS
 
-func Run() error {
+func Run(version string) error {
 	home := os.Getenv("HOME")
 
 	mu := &sync.RWMutex{}
@@ -68,7 +68,7 @@ func Run() error {
 			return
 		}
 		ready.Store(false)
-		data := scanAndBuild(home)
+		data := scanAndBuild(home, version)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
@@ -119,7 +119,7 @@ func Run() error {
 		}
 
 		ready.Store(false)
-		data := scanAndBuild(home)
+		data := scanAndBuild(home, version)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
@@ -149,7 +149,7 @@ func Run() error {
 	}()
 
 	go func() {
-		data := scanAndBuild(home)
+		data := scanAndBuild(home, version)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
@@ -161,7 +161,7 @@ func Run() error {
 	return http.Serve(listener, mux)
 }
 
-func scanAndBuild(home string) *pageData {
+func scanAndBuild(home, version string) *pageData {
 	entries, t1, t2, t3, t4 := scan.Collect(home)
 	gitFound, gitSize := scan.HasGitTrap(home)
 
@@ -199,6 +199,7 @@ func scanAndBuild(home string) *pageData {
 
 	return &pageData{
 		Home:     home,
+		Version:  version,
 		Tiers:    groups,
 		AllEmpty: allEmpty,
 		MaxSize:  maxSize,
@@ -223,6 +224,7 @@ type tierGroup struct {
 
 type pageData struct {
 	Home     string
+	Version  string
 	Tiers    []tierGroup
 	AllEmpty bool
 	MaxSize  int64
