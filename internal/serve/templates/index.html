@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>orbital — disk dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --tier1: #3fb950;
+    --tier2: #d29922;
+    --tier3: #db6d28;
+    --tier4: #f85149;
+    --tier5: #8b949e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .container { max-width: 960px; margin:0 auto; padding: 32px 24px; }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 14px; }
+
+  .summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 32px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+  }
+  .card .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .card .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  .tier-section { margin-bottom: 32px; }
+  .tier-header {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--muted); margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .tier-header .tier-total { float: right; }
+
+  .entry {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 6px; margin-bottom: 4px;
+    border-left: 3px solid var(--border);
+  }
+  .entry:hover { background: rgba(255,255,255,0.03); }
+  .entry.t1 { border-left-color: var(--tier1); }
+  .entry.t2 { border-left-color: var(--tier2); }
+  .entry.t3 { border-left-color: var(--tier3); }
+  .entry.t4 { border-left-color: var(--tier4); }
+
+  .entry .lock { color: var(--muted); font-size: 14px; width: 20px; flex-shrink: 0; }
+  .entry .size { font-family: "SF Mono", "Menlo", monospace; font-size: 14px; font-weight: 500; min-width: 72px; flex-shrink: 0; }
+  .entry .info { flex: 1; min-width: 0; }
+  .entry .label-row { font-size: 14px; }
+  .entry .path { font-size: 12px; color: var(--muted); font-family: "SF Mono", "Menlo", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .bar-wrap { flex-shrink: 0; width: 120px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .bar-fill.t1 { background: var(--tier1); }
+  .bar-fill.t2 { background: var(--tier2); }
+  .bar-fill.t3 { background: var(--tier3); }
+  .bar-fill.t4 { background: var(--tier4); }
+
+  .git-trap { background: rgba(248,81,73,0.1); border: 1px solid var(--tier4); border-radius: 8px; padding: 16px; margin-bottom: 32px; }
+  .git-trap .warn { color: var(--tier4); font-weight: 600; }
+
+  .refresh { margin-top: 16px; }
+  .refresh button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+  .refresh button:hover { background: #21262d; }
+
+  .empty { text-align: center; padding: 48px 0; color: var(--muted); font-size: 16px; }
+  .empty .emoji { font-size: 32px; margin-bottom: 8px; }
+
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center; }
+  .footer, .footer a { color: var(--muted); font-size: 12px; }
+
+  .clean-section {
+    margin-top: 32px; padding: 20px;
+    background: var(--surface); border: 1px solid var(--tier1);
+    border-radius: 8px;
+  }
+  .clean-section h3 { font-size: 16px; margin-bottom: 8px; color: var(--tier1); }
+  .clean-section p { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .clean-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .clean-actions button {
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; border: 1px solid var(--border);
+  }
+  #clean-btn { background: var(--tier1); color: #000; border-color: var(--tier1); font-weight: 600; }
+  #clean-btn:hover { opacity: 0.9; }
+  #clean-confirm button:first-of-type { background: var(--tier4); color: #fff; border-color: var(--tier4); font-weight: 600; }
+  #clean-confirm button:last-of-type { background: var(--surface); color: var(--text); }
+  #clean-status { font-size: 13px; }
+  .clean-note { margin-top: 12px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div><h1>orbital</h1><span class="sub">macOS disk dashboard</span></div>
+  <span class="sub">v0.1.0</span>
+</header>
+
+{{if .GitTrap.Found}}
+<div class="git-trap">
+  <span class="warn">⚠️ .git trap detected</span> — {{.GitTrap.SizeMB | formatSize}} accidental git repo in home. Run <code>orbital git-trap</code> to fix.
+</div>
+{{end}}
+
+{{if not .Entries}}
+<div class="empty">
+  <div class="emoji">✨</div>
+  <p>Your Mac is clean. Nothing reclaimable found.</p>
+</div>
+{{else}}
+
+<div class="summary">
+  <div class="card">
+    <div class="label">Total reclaimable</div>
+    <div class="value">{{.Totals.All | formatSize}}</div>
+  </div>
+  <div class="card">
+    <div class="label">Cleanable (T1-2)</div>
+    <div class="value">{{.Totals.Cleanable | formatSize}}</div>
+    <div class="sub">via <code>orbital clean</code></div>
+  </div>
+  <div class="card">
+    <div class="label">App-level (T3)</div>
+    <div class="value">{{.Totals.Tier3 | formatSize}}</div>
+    <div class="sub">needs app settings</div>
+  </div>
+  <div class="card">
+    <div class="label">Manual review (T4)</div>
+    <div class="value">{{.Totals.Tier4 | formatSize}}</div>
+    <div class="sub">review before acting</div>
+  </div>
+</div>
+
+{{$prevTier := 0}}
+{{range .Entries}}
+  {{if ne .Tier $prevTier}}
+    {{if ne $prevTier 0}}</div>{{end}}
+    {{$prevTier = .Tier}}
+    <div class="tier-section">
+    <div class="tier-header">
+      Tier {{.Tier}}: {{tierLabel .Tier}}
+      <span class="tier-total">{{tierTotal $.Totals .Tier | formatSize}}</span>
+    </div>
+  {{end}}
+
+  <div class="entry t{{.Tier}}">
+    {{if .Cleanable}}<span class="lock"></span>{{else}}<span class="lock">🔒</span>{{end}}
+    <span class="size">{{.SizeMB | formatSize}}</span>
+    <div class="info">
+      <div class="label-row">{{.Label}}</div>
+      <div class="path">~/{{homeRelative $.Home .Path}}</div>
+      {{if .Description}}<div class="desc">{{.Description}}</div>{{end}}
+    </div>
+    <div class="bar-wrap"><div class="bar-fill t{{.Tier}}" style="width:{{barPct .SizeMB $.MaxSize}}%"></div></div>
+  </div>
+{{end}}
+</div>
+
+{{end}}
+
+<div class="refresh">
+  <button onclick="refresh()">⟳ Refresh</button>
+</div>
+
+{{if .Totals.Cleanable}}
+<div class="clean-section">
+  <h3>🧹 Clean Tiers 1–2</h3>
+  <p>These items are safe to delete — they auto-regenerate or reinstall.</p>
+  <div class="clean-actions">
+    <button id="clean-btn" onclick="startClean()">Delete {{.Totals.Cleanable | formatSize}} cleanable</button>
+    <span id="clean-confirm" style="display:none">
+      <strong>⚠️ This cannot be undone.</strong>
+      <button onclick="confirmClean()">Yes, delete permanently</button>
+      <button onclick="cancelClean()">Cancel</button>
+    </span>
+    <span id="clean-status"></span>
+  </div>
+  <p class="clean-note">Or run <code>orbital clean</code> in terminal for selective cleanup.</p>
+</div>
+{{end}}
+
+<div class="footer">
+  <a href="https://github.com/srmdn/orbital" target="_blank">github.com/srmdn/orbital</a>
+  &nbsp;·&nbsp; run <code>orbital scan</code> in terminal for text output
+</div>
+
+</div>
+
+<script>
+  async function refresh() {
+    const btn = document.querySelector('.refresh button');
+    btn.textContent = '⟳ Scanning...';
+    btn.disabled = true;
+    try {
+      await fetch('/api/refresh', {method:'POST'});
+      location.reload();
+    } catch(e) {
+      btn.textContent = '⟳ Failed — try again';
+      btn.disabled = false;
+    }
+  }
+
+  function startClean() {
+    document.getElementById('clean-btn').style.display = 'none';
+    document.getElementById('clean-confirm').style.display = 'inline';
+  }
+
+  function cancelClean() {
+    document.getElementById('clean-btn').style.display = 'inline';
+    document.getElementById('clean-confirm').style.display = 'none';
+  }
+
+  async function confirmClean() {
+    const status = document.getElementById('clean-status');
+    const confirm = document.getElementById('clean-confirm');
+    confirm.style.display = 'none';
+    status.textContent = '🗑 Deleting...';
+    try {
+      const resp = await fetch('/api/clean', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'confirm=yes-delete'
+      });
+      const data = await resp.json();
+      if (data.error) {
+        status.textContent = '❌ ' + data.error;
+        document.getElementById('clean-btn').style.display = 'inline';
+      } else {
+        status.textContent = '✅ Freed ' + (data.freedMB/1024).toFixed(1) + ' GB';
+        setTimeout(() => location.reload(), 2000);
+      }
+    } catch(e) {
+      status.textContent = '❌ Failed — try again';
+      document.getElementById('clean-btn').style.display = 'inline';
+    }
+  }
+</script>
+</body>
+</html>

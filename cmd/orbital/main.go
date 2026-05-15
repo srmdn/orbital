@@ -6,6 +6,7 @@ import (
 
 	"github.com/srmdn/orbital/internal/clean"
 	"github.com/srmdn/orbital/internal/scan"
+	"github.com/srmdn/orbital/internal/serve"
 )
 
 var version = "0.1.0"
@@ -21,8 +22,10 @@ func main() {
 	case "scan", "s":
 		scan.Run()
 	case "serve", "ui":
-		fmt.Println("🚀 Dashboard coming soon. Run 'orbital scan' for terminal output.")
-		os.Exit(0)
+		if err := serve.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	case "size":
 		scan.DiskSize()
 	case "hogs":
@@ -57,7 +60,7 @@ func printBanner() {
 func printHelp() {
 	fmt.Println("commands:")
 	fmt.Println("  scan, s       audit your mac — find reclaimable space")
-	fmt.Println("  serve, ui     open the dashboard in your browser (coming soon)")
+	fmt.Println("  serve, ui     open the dashboard in your browser")
 	fmt.Println("  size          quick disk space check")
 	fmt.Println("  hogs          top 20 space hogs in home directory")
 	fmt.Println("  git-trap      check for accidental .git in home")

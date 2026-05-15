@@ -18,9 +18,10 @@
 cmd/orbital/      # CLI entry point
 internal/
   scan/           # Disk scanning engine
-  clean/          # Interactive cleanup ✅
-  report/         # Report generation (planned)
-dashboard/        # Astro web dashboard (planned)
+  clean/          # Interactive cleanup TUI
+  serve/          # HTTP server + embedded dashboard
+    templates/    # Go HTML templates (embedded)
+dashboard/        # Astro web dashboard (planned, empty scaffold)
 docs/             # Reference documentation
 ```
 
@@ -41,7 +42,7 @@ go run ./cmd/orbital  # Run
 | `hogs` | ✅ Working |
 | `git-trap` | ✅ Working |
 | `clean` | ✅ Working |
-| `serve` (dashboard) | 🚧 Planned |
+| `serve` (dashboard) | ✅ Working — embedded HTML dashboard |
 
 ## Conventions
 

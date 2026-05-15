@@ -67,8 +67,8 @@ var tier4Targets = []tierConfig{
 
 // Collect scans the home directory and returns all reclaimable entries.
 func Collect(home string) (entries []Entry, t1, t2, t3, t4 int64) {
-	t1 = scanTier(home, tier1Targets, "", &entries, TierSafe, true, true)
-	t2 = scanTier(home, tier2Targets, "", &entries, TierReinst, true, true)
+	t1 = scanTier(home, tier1Targets, "", &entries, TierSafe, true, false)
+	t2 = scanTier(home, tier2Targets, "", &entries, TierReinst, true, false)
 	t3 = scanTier(home, tier3Targets, "", &entries, TierApp, false, false)
 	t4 = scanTier(home, tier4Targets, "", &entries, TierManual, false, false)
 	return
