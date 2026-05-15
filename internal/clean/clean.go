@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -91,19 +92,9 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 		}
 		relPath := strings.TrimPrefix(e.Path, home+"/")
 
-		label := e.Label
-		if !e.Cleanable {
-			switch e.Tier {
-			case scan.TierApp:
-				label = fmt.Sprintf("%s  ← %s", e.Label, e.Description)
-			case scan.TierManual:
-				label = fmt.Sprintf("%s  ← %s", e.Label, e.Description)
-			}
-		}
-
 		fmt.Printf("    %s %s  %-6s  ~/%s\n", numPrefix, mark, scan.FormatSize(e.SizeMB), relPath)
-		if !e.Cleanable {
-			fmt.Printf("         %s\n", label)
+		if !e.Cleanable && e.CleanHint != "" {
+			fmt.Printf("         %s\n", e.CleanHint)
 		}
 	}
 
@@ -161,10 +152,16 @@ func confirmDelete(entries []scan.Entry, selected map[int]bool) bool {
 	fmt.Println("  These items will be permanently deleted:")
 	fmt.Println()
 
+	home := os.Getenv("HOME")
+	trashPath := filepath.Join(home, ".Trash")
 	var total int64
 	for i := range selected {
 		e := entries[i]
-		fmt.Printf("    %-6s  %s\n", scan.FormatSize(e.SizeMB), e.Label)
+		label := e.Label
+		if e.Path == trashPath || strings.HasSuffix(e.Path, "/.Trash") {
+			label = "Empty Trash"
+		}
+		fmt.Printf("    %-6s  %s\n", scan.FormatSize(e.SizeMB), label)
 		total += e.SizeMB
 	}
 
@@ -186,11 +183,44 @@ func executeDelete(entries []scan.Entry, selected map[int]bool) {
 	fmt.Println()
 
 	home := os.Getenv("HOME")
+	trashPath := filepath.Join(home, ".Trash")
 	var freed int64
 	var failed int
 
+	var hasTrash, trashOK bool
+	var trashSize int64
+	var trashIdx int
 	for i := range selected {
 		e := entries[i]
+		if e.Path == trashPath || strings.HasSuffix(e.Path, "/.Trash") {
+			hasTrash = true
+			trashSize = e.SizeMB
+			trashIdx = i
+			break
+		}
+	}
+	if hasTrash {
+		fmt.Print("    emptying trash... ")
+		cmd := exec.Command("osascript", "-e", `tell application "Finder" to empty trash`)
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("failed (%v)\n", err)
+		} else {
+			fmt.Println("done")
+			trashOK = true
+		}
+	}
+
+	for i := range selected {
+		e := entries[i]
+
+		if hasTrash && i == trashIdx {
+			if trashOK {
+				freed += trashSize
+			} else {
+				failed++
+			}
+			continue
+		}
 
 		// Safety: only delete paths under home directory
 		rel, err := filepath.Rel(home, e.Path)

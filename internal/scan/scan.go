@@ -24,53 +24,75 @@ type Entry struct {
 	SizeMB      int64
 	Tier        int
 	Cleanable   bool
+	CleanHint   string
+	StackTag    string
 }
 
-type tierConfig struct {
-	Path        string
-	Label       string
-	Description string
-}
-
-var tier1Targets = []tierConfig{
-	{".npm", "npm cache", "Node package manager cache"},
-	{".bun", "bun cache", "Bun package manager cache"},
-	{".cache", "System caches", "pip, HuggingFace, SDK caches"},
-	{".codex", "Codex CLI cache", "OpenAI Codex CLI cache"},
-	{"Library/Caches/go-build", "Go build cache", "Go compiler build artifacts"},
-	{"Library/Caches/goimports", "Go imports cache", "Go imports auto-complete cache"},
-	{"Library/Caches/node-gyp", "node-gyp cache", "Native module build cache"},
-	{"Library/Caches/Homebrew", "Homebrew cache", "Brew download cache"},
-	{"Library/Caches/SiriTTS", "Siri TTS cache", "Text-to-speech voice data"},
-	{"Library/Caches/com.apple.geod", "Maps cache", "Geolocation/maps cache"},
-	{"Library/pnpm/store", "pnpm store", "pnpm package cache"},
-	{"go/pkg/mod", "Go module cache", "Downloaded Go modules"},
-}
-
-var tier2Targets = []tierConfig{
-	{".nvm", "nvm / Node.js", "Node version manager installs"},
-	{".rustup", "Rust toolchain", "Rustup toolchain installs"},
-	{".android", "Android SDK", "Android SDK and emulators"},
-	{".cursor", "Cursor editor", "Cursor IDE data"},
-	{".windsurf", "Windsurf editor", "Windsurf IDE data"},
-}
-
-var tier3Targets = []tierConfig{
-	{"Library/Application Support/Google/Chrome", "Chrome profile", "Clear from Chrome settings — contains bookmarks & passwords"},
-	{"Library/Containers/com.docker.docker/Data", "Docker data", "Use 'docker system prune -a' instead"},
-}
-
-var tier4Targets = []tierConfig{
-	{"Downloads", "Downloads folder", "Review DMGs, zips, old files manually"},
-	{"Library/Application Support/Code", "VS Code workspaces", "Old workspaces — review before removing"},
-}
-
-// Collect scans the home directory and returns all reclaimable entries.
+// Collect scans the home directory and returns all reclaimable entries
+// sorted by tier, stack relevance, and size.
 func Collect(home string) (entries []Entry, t1, t2, t3, t4 int64) {
-	t1 = scanTier(home, tier1Targets, "", &entries, TierSafe, true, false)
-	t2 = scanTier(home, tier2Targets, "", &entries, TierReinst, true, false)
-	t3 = scanTier(home, tier3Targets, "", &entries, TierApp, false, false)
-	t4 = scanTier(home, tier4Targets, "", &entries, TierManual, false, false)
+	targets := GetKnownTargets()
+
+	known := map[string]bool{}
+	for _, t := range targets {
+		known[t.Path] = true
+	}
+
+	for _, t := range targets {
+		fullPath := filepath.Join(home, t.Path)
+		mb := dirSizeMB(fullPath)
+		if mb == 0 {
+			continue
+		}
+		entries = append(entries, Entry{
+			Path:        fullPath,
+			Label:       t.Label,
+			Description: t.Description,
+			SizeMB:      mb,
+			Tier:        t.Tier,
+			Cleanable:   t.Cleanable,
+			CleanHint:   t.CleanHint,
+			StackTag:    t.StackTag,
+		})
+	}
+
+	discovered := DiscoverUnknown(home, known)
+	entries = append(entries, discovered...)
+
+	dockerEntries := DiscoverDocker(home)
+	entries = append(entries, dockerEntries...)
+
+	stacks := DetectStacks(home)
+	stackSet := map[string]bool{}
+	for _, s := range stacks {
+		stackSet[s] = true
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Tier != entries[j].Tier {
+			return entries[i].Tier < entries[j].Tier
+		}
+		iStack := entries[i].StackTag != "" && stackSet[entries[i].StackTag]
+		jStack := entries[j].StackTag != "" && stackSet[entries[j].StackTag]
+		if iStack != jStack {
+			return iStack
+		}
+		return entries[i].SizeMB > entries[j].SizeMB
+	})
+
+	for _, e := range entries {
+		switch e.Tier {
+		case TierSafe:
+			t1 += e.SizeMB
+		case TierReinst:
+			t2 += e.SizeMB
+		case TierApp:
+			t3 += e.SizeMB
+		case TierManual:
+			t4 += e.SizeMB
+		}
+	}
+
 	return
 }
 
@@ -102,37 +124,58 @@ func TierLabel(tier int) string {
 	}
 }
 
-// FormatSize formats a size in MB to a human-readable string.
-func FormatSize(mb int64) string {
-	if mb >= 1024 {
-		return fmt.Sprintf("%.1f GB", float64(mb)/1024.0)
-	}
-	if mb == 0 {
-		return "0 MB"
-	}
-	return fmt.Sprintf("%d MB", mb)
-}
-
 func Run() {
 	fmt.Println()
 	fmt.Println("  scanning your mac...")
 	fmt.Println()
 	home := os.Getenv("HOME")
 
-	var entries []Entry
+	entries, t1, t2, t3, t4 := Collect(home)
 
-	tier1Total := scanTier(home, tier1Targets, "TIER 1: Safe caches (auto-regenerate)", &entries, TierSafe, true, true)
+	var t1Entries, t2Entries, t3Entries, t4Entries []Entry
+	for _, e := range entries {
+		switch e.Tier {
+		case TierSafe:
+			t1Entries = append(t1Entries, e)
+		case TierReinst:
+			t2Entries = append(t2Entries, e)
+		case TierApp:
+			t3Entries = append(t3Entries, e)
+		case TierManual:
+			t4Entries = append(t4Entries, e)
+		}
+	}
+
+	printTier(TierSafe, t1Entries)
 	fmt.Println()
-	tier2Total := scanTier(home, tier2Targets, "TIER 2: Reinstallable toolchains", &entries, TierReinst, true, true)
+	printTier(TierReinst, t2Entries)
 	fmt.Println()
-	tier3Total := scanTier(home, tier3Targets, "TIER 3: App-level cleanup required", &entries, TierApp, false, true)
+	printTier(TierApp, t3Entries)
 	fmt.Println()
-	tier4Total := scanTier(home, tier4Targets, "TIER 4: Manual review required", &entries, TierManual, false, true)
+	printTier(TierManual, t4Entries)
 	fmt.Println()
+
+	if count, totalMB := ScanStaleDMGs(home); count > 0 {
+		fmt.Println("  ── Stale disk images ──")
+		fmt.Printf("  %d DMGs in ~/Downloads — %s total\n", count, FormatSize(totalMB))
+		fmt.Println("  Run rm ~/Downloads/*.dmg to remove (review first)")
+		fmt.Println()
+	}
+
+	if files := ScanLargeOldFiles(home); len(files) > 0 {
+		fmt.Println("  ── Large old files (>100 MB, 90+ days) ──")
+		for _, f := range files {
+			relPath := strings.TrimPrefix(f.Path, home)
+			relPath = strings.TrimPrefix(relPath, "/")
+			fmt.Printf("    %-6s  ~/%s  (modified %s)\n",
+				FormatSize(f.SizeMB), relPath, f.ModTime.Format("2006-01-02"))
+		}
+		fmt.Println()
+	}
 
 	checkGitTrapInternal(home)
 
-	total := tier1Total + tier2Total + tier3Total + tier4Total
+	total := t1 + t2 + t3 + t4
 	if total > 0 {
 		fmt.Println("  ────────────────────────────────────────────────")
 		fmt.Printf("  Total reclaimable: %s\n", FormatSize(total))
@@ -143,33 +186,19 @@ func Run() {
 	}
 }
 
-func scanTier(home string, targets []tierConfig, header string, entries *[]Entry, tier int, cleanable, verbose bool) int64 {
-	if verbose {
-		fmt.Printf("  ── %s ──\n", header)
-	}
-	var total int64
-	for _, t := range targets {
-		fullPath := filepath.Join(home, t.Path)
-		mb := dirSizeMB(fullPath)
-		if mb > 0 {
-			*entries = append(*entries, Entry{
-				Path:        fullPath,
-				Label:       t.Label,
-				Description: t.Description,
-				SizeMB:      mb,
-				Tier:        tier,
-				Cleanable:   cleanable,
-			})
-			total += mb
-			if verbose {
-				fmt.Printf("    %-6s  %-25s  %s\n", FormatSize(mb), t.Label, t.Description)
-			}
-		}
-	}
-	if verbose && total == 0 {
+func printTier(tier int, entries []Entry) {
+	fmt.Printf("  ── TIER %d: %s ──\n", tier, TierLabel(tier))
+	if len(entries) == 0 {
 		fmt.Println("    (nothing found)")
+		return
 	}
-	return total
+	for _, e := range entries {
+		stackTag := ""
+		if e.StackTag != "" {
+			stackTag = " [" + e.StackTag + "]"
+		}
+		fmt.Printf("    %-6s  %-25s  %s%s\n", FormatSize(e.SizeMB), e.Label, e.Description, stackTag)
+	}
 }
 
 func checkGitTrapInternal(home string) {
@@ -210,37 +239,134 @@ func DiskSize() {
 	}
 }
 
-// TopHogs prints the largest directories in the home folder.
+// TopHogs prints the largest directories in the home folder grouped by tier.
 func TopHogs() {
 	home := os.Getenv("HOME")
-	entries, _ := os.ReadDir(home)
+	targets := GetKnownTargets()
 
-	type hogEntry struct {
+	registryPaths := map[string]bool{}
+	tierEntries := make(map[int][]struct {
+		path string
+		size int64
+	})
+
+	for _, t := range targets {
+		registryPaths[t.Path] = true
+		fullPath := filepath.Join(home, t.Path)
+		mb := dirSizeMB(fullPath)
+		if mb == 0 {
+			continue
+		}
+		tierEntries[t.Tier] = append(tierEntries[t.Tier], struct {
+			path string
+			size int64
+		}{t.Path, mb})
+	}
+
+	for tier := range tierEntries {
+		sort.Slice(tierEntries[tier], func(i, j int) bool {
+			return tierEntries[tier][i].size > tierEntries[tier][j].size
+		})
+	}
+
+	var unregistered []struct {
 		path string
 		size int64
 	}
-	var hogs []hogEntry
-
-	for _, entry := range entries {
-		fullPath := filepath.Join(home, entry.Name())
-		mb := dirSizeMB(fullPath)
-		if mb > 0 {
-			hogs = append(hogs, hogEntry{path: entry.Name(), size: mb})
+	homeDirs, err := os.ReadDir(home)
+	if err == nil {
+		for _, d := range homeDirs {
+			name := d.Name()
+			if registryPaths[name+"/"] {
+				continue
+			}
+			if IsSafetyExcluded(name + "/") {
+				continue
+			}
+			fullPath := filepath.Join(home, name)
+			mb := dirSizeMB(fullPath)
+			if mb > 0 {
+				unregistered = append(unregistered, struct {
+					path string
+					size int64
+				}{name, mb})
+			}
 		}
 	}
-
-	sort.Slice(hogs, func(i, j int) bool { return hogs[i].size > hogs[j].size })
-
-	limit := 20
-	if len(hogs) < limit {
-		limit = len(hogs)
-	}
+	sort.Slice(unregistered, func(i, j int) bool {
+		return unregistered[i].size > unregistered[j].size
+	})
 
 	fmt.Println("  Top space consumers in ~")
 	fmt.Println()
-	for i := 0; i < limit; i++ {
-		fmt.Printf("    %-6s  ~/%s\n", FormatSize(hogs[i].size), hogs[i].path)
+
+	for tier := TierSafe; tier <= TierManual; tier++ {
+		entries := tierEntries[tier]
+		if len(entries) == 0 {
+			continue
+		}
+		fmt.Printf("  ── TIER %d: %s ──\n", tier, TierLabel(tier))
+		for _, e := range entries {
+			fmt.Printf("    %-6s  ~/%s\n", FormatSize(e.size), e.path)
+		}
+		fmt.Println()
 	}
+
+	if len(unregistered) > 0 {
+		fmt.Println("  ── Unregistered ──")
+		for _, u := range unregistered {
+			fmt.Printf("    %-6s  ~/%s/\n", FormatSize(u.size), u.path)
+		}
+		fmt.Println()
+	}
+}
+
+// ScanStacks groups collected entries by detected stack tags and prints
+// per-stack space totals.
+func ScanStacks(home string) {
+	detected := DetectStacks(home)
+	if len(detected) == 0 {
+		fmt.Println("  No dev stacks detected.")
+		return
+	}
+
+	stackSet := map[string]bool{}
+	for _, s := range detected {
+		stackSet[s] = true
+	}
+
+	entries, _, _, _, _ := Collect(home)
+
+	type stackGroup struct {
+		tag    string
+		sizeMB int64
+		count  int
+	}
+	groups := map[string]*stackGroup{}
+
+	for _, e := range entries {
+		if e.StackTag == "" || !stackSet[e.StackTag] {
+			continue
+		}
+		if _, ok := groups[e.StackTag]; !ok {
+			groups[e.StackTag] = &stackGroup{tag: e.StackTag}
+		}
+		groups[e.StackTag].sizeMB += e.SizeMB
+		groups[e.StackTag].count++
+	}
+
+	fmt.Println()
+	fmt.Println("  Detected stacks:")
+	fmt.Println()
+	for _, tag := range detected {
+		g, ok := groups[tag]
+		if !ok {
+			fmt.Printf("    %-10s (none found)\n", tag)
+			continue
+		}
+		fmt.Printf("    %-10s %-8s (%d entries)\n", g.tag, FormatSize(g.sizeMB), g.count)
+	}
+	fmt.Println()
 }
 
 // CheckGitTrap checks for accidental .git in home directory.

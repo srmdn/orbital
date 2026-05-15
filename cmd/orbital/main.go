@@ -20,7 +20,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "scan", "s":
-		scan.Run()
+		if len(os.Args) > 2 && (os.Args[2] == "--stacks" || os.Args[2] == "-s") {
+			scan.ScanStacks(os.Getenv("HOME"))
+		} else {
+			scan.Run()
+		}
 	case "serve", "ui":
 		if err := serve.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -60,9 +64,10 @@ func printBanner() {
 func printHelp() {
 	fmt.Println("commands:")
 	fmt.Println("  scan, s       audit your mac — find reclaimable space")
+	fmt.Println("                  --stacks, -s    show per-stack breakdown")
 	fmt.Println("  serve, ui     open the dashboard in your browser")
 	fmt.Println("  size          quick disk space check")
-	fmt.Println("  hogs          top 20 space hogs in home directory")
+	fmt.Println("  hogs          space hogs in ~ grouped by tier")
 	fmt.Println("  git-trap      check for accidental .git in home")
 	fmt.Println("  clean         interactive cleanup")
 	fmt.Println("  version       show version")
