@@ -39,6 +39,7 @@ func main() {
 	case "version", "--version", "-v":
 		fmt.Printf("orbital v%s\n", version)
 	case "help", "--help", "-h", "h":
+		printBanner()
 		printHelp()
 	case "clean":
 		clean.Run()
@@ -50,6 +51,8 @@ func main() {
 }
 
 func printBanner() {
+	fmt.Println()
+	fmt.Println()
 	fmt.Println("  ██████╗ ██████╗ ██████╗ ██╗████████╗ █████╗ ██╗     ")
 	fmt.Println("  ██╔═══██╗██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗██║     ")
 	fmt.Println("  ██║   ██║██████╔╝██████╔╝██║   ██║   ███████║██║     ")
