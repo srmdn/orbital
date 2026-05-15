@@ -197,6 +197,8 @@ func Run() {
 		fmt.Printf("  Total reclaimable: %s\n", FormatSize(total))
 		fmt.Println()
 		fmt.Println("  'orbital clean' — free Tiers 1-2  ·  'orbital hogs' — full list  ·  docs/cleanup-guide.md")
+		fmt.Println()
+		fmt.Println("  Feedback? github.com/srmdn/orbital/issues/new")
 	}
 }
 
