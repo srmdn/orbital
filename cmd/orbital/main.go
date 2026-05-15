@@ -1,0 +1,69 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/srmdn/orbital/internal/clean"
+	"github.com/srmdn/orbital/internal/scan"
+)
+
+var version = "0.1.0"
+
+func main() {
+	if len(os.Args) < 2 {
+		printBanner()
+		printHelp()
+		os.Exit(0)
+	}
+
+	switch os.Args[1] {
+	case "scan", "s":
+		scan.Run()
+	case "serve", "ui":
+		fmt.Println("🚀 Dashboard coming soon. Run 'orbital scan' for terminal output.")
+		os.Exit(0)
+	case "size":
+		scan.DiskSize()
+	case "hogs":
+		scan.TopHogs()
+	case "git-trap":
+		scan.CheckGitTrap()
+	case "version", "--version", "-v":
+		fmt.Printf("orbital v%s\n", version)
+	case "help", "--help", "-h", "h":
+		printHelp()
+	case "clean":
+		clean.Run()
+	default:
+		fmt.Printf("Unknown command: %s\n\n", os.Args[1])
+		printHelp()
+		os.Exit(1)
+	}
+}
+
+func printBanner() {
+	fmt.Println("  ██████╗ ██████╗ ██████╗ ██╗████████╗ █████╗ ██╗     ")
+	fmt.Println("  ██╔═══██╗██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗██║     ")
+	fmt.Println("  ██║   ██║██████╔╝██████╔╝██║   ██║   ███████║██║     ")
+	fmt.Println("  ██║   ██║██╔══██╗██╔══██╗██║   ██║   ██╔══██║██║     ")
+	fmt.Println("  ╚██████╔╝██║  ██║██████╔╝██║   ██║   ██║  ██║███████╗")
+	fmt.Println("   ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝")
+	fmt.Println("")
+	fmt.Println("  the friendly mac disk doctor")
+	fmt.Println("")
+}
+
+func printHelp() {
+	fmt.Println("commands:")
+	fmt.Println("  scan, s       audit your mac — find reclaimable space")
+	fmt.Println("  serve, ui     open the dashboard in your browser (coming soon)")
+	fmt.Println("  size          quick disk space check")
+	fmt.Println("  hogs          top 20 space hogs in home directory")
+	fmt.Println("  git-trap      check for accidental .git in home")
+	fmt.Println("  clean         interactive cleanup")
+	fmt.Println("  version       show version")
+	fmt.Println("  help          show this help")
+	fmt.Println("")
+	fmt.Println("docs:  https://github.com/srmdn/orbital")
+}
