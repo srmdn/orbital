@@ -127,7 +127,7 @@
 </div>
 {{end}}
 
-{{if not .Entries}}
+{{if .AllEmpty}}
 <div class="empty">
   <div class="emoji">✨</div>
   <p>Your Mac is clean. Nothing reclaimable found.</p>
@@ -156,18 +156,15 @@
   </div>
 </div>
 
-{{$prevTier := 0}}
-{{range .Entries}}
-  {{if ne .Tier $prevTier}}
-    {{if ne $prevTier 0}}</div>{{end}}
-    {{$prevTier = .Tier}}
-    <div class="tier-section">
-    <div class="tier-header">
-      Tier {{.Tier}}: {{tierLabel .Tier}}
-      <span class="tier-total">{{tierTotal $.Totals .Tier | formatSize}}</span>
-    </div>
-  {{end}}
+{{range .Tiers}}
+<div class="tier-section">
+  <div class="tier-header">
+    Tier {{.Num}}: {{.Label}}
+    <span class="tier-total">{{.Total | formatSize}}</span>
+  </div>
 
+  {{if .Entries}}
+    {{range .Entries}}
   <div class="entry t{{.Tier}}">
     {{if .Cleanable}}<span class="lock"></span>{{else}}<span class="lock">🔒</span>{{end}}
     <span class="size">{{.SizeMB | formatSize}}</span>
@@ -178,9 +175,14 @@
     </div>
     <div class="bar-wrap"><div class="bar-fill t{{.Tier}}" style="width:{{barPct .SizeMB $.MaxSize}}%"></div></div>
   </div>
-{{end}}
+    {{end}}
+  {{else}}
+  <div class="entry">
+    <span class="size">—</span>
+    <div class="info"><div class="label-row" style="color:var(--muted)">Nothing found</div></div>
+  </div>
+  {{end}}
 </div>
-
 {{end}}
 
 <div class="refresh">
@@ -202,6 +204,7 @@
   </div>
   <p class="clean-note">Or run <code>orbital clean</code> in terminal for selective cleanup.</p>
 </div>
+{{end}}
 {{end}}
 
 <div class="footer">

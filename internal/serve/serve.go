@@ -30,8 +30,6 @@ func Run() error {
 
 	tmpl := template.Must(template.New("index.html").Funcs(template.FuncMap{
 		"formatSize":   scan.FormatSize,
-		"tierLabel":    scan.TierLabel,
-		"tierTotal":    tierTotal,
 		"homeRelative": homeRelative,
 		"barPct":       barPct,
 	}).ParseFS(templatesFS, "templates/index.html"))
@@ -85,13 +83,22 @@ func Run() error {
 		}
 
 		mu.RLock()
-		entries := data.Entries
+		var entries []scan.Entry
+		for _, tg := range data.Tiers {
+			entries = append(entries, tg.Entries...)
+		}
 		mu.RUnlock()
 
 		var freed int64
 		var failed int
 		for _, e := range entries {
 			if !e.Cleanable {
+				continue
+			}
+			// Safety: only delete paths under home directory
+			rel, err := filepath.Rel(home, e.Path)
+			if err != nil || strings.HasPrefix(rel, "..") {
+				failed++
 				continue
 			}
 			if err := os.RemoveAll(e.Path); err != nil {
@@ -142,10 +149,36 @@ func scanAndBuild(home string) *pageData {
 		}
 	}
 
+	tierNums := []int{scan.TierSafe, scan.TierReinst, scan.TierApp, scan.TierManual}
+	tierTotals := []int64{t1, t2, t3, t4}
+	var groups []tierGroup
+	for i, tn := range tierNums {
+		var groupEntries []scan.Entry
+		for _, e := range entries {
+			if e.Tier == tn {
+				groupEntries = append(groupEntries, e)
+			}
+		}
+		groups = append(groups, tierGroup{
+			Num:     tn,
+			Label:   scan.TierLabel(tn),
+			Total:   tierTotals[i],
+			Entries: groupEntries,
+		})
+	}
+
+	allEmpty := true
+	for _, tg := range groups {
+		if len(tg.Entries) > 0 {
+			allEmpty = false
+		}
+	}
+
 	return &pageData{
-		Home:    home,
-		Entries: entries,
-		MaxSize: maxSize,
+		Home:     home,
+		Tiers:   groups,
+		AllEmpty: allEmpty,
+		MaxSize:  maxSize,
 		Totals: totals{
 			Tier1:     t1,
 			Tier2:     t2,
@@ -158,12 +191,20 @@ func scanAndBuild(home string) *pageData {
 	}
 }
 
-type pageData struct {
-	Home    string
+type tierGroup struct {
+	Num     int
+	Label   string
+	Total   int64
 	Entries []scan.Entry
-	MaxSize int64
-	Totals  totals
-	GitTrap gitTrap
+}
+
+type pageData struct {
+	Home     string
+	Tiers    []tierGroup
+	AllEmpty bool
+	MaxSize  int64
+	Totals   totals
+	GitTrap  gitTrap
 }
 
 type totals struct {
@@ -178,20 +219,6 @@ type totals struct {
 type gitTrap struct {
 	Found  bool  `json:"found"`
 	SizeMB int64 `json:"sizeMB"`
-}
-
-func tierTotal(t totals, tier int) int64 {
-	switch tier {
-	case 1:
-		return t.Tier1
-	case 2:
-		return t.Tier2
-	case 3:
-		return t.Tier3
-	case 4:
-		return t.Tier4
-	}
-	return 0
 }
 
 func homeRelative(home, path string) string {
