@@ -20,7 +20,7 @@ func Run() {
 	fmt.Println("  scanning...")
 	fmt.Println()
 
-	entries, t1, t2 := scan.Collect(home)
+	entries, t1, t2, t3, t4 := scan.Collect(home)
 
 	if len(entries) == 0 {
 		fmt.Println("  ✅ Nothing reclaimable found. Your Mac is clean!")
@@ -30,7 +30,7 @@ func Run() {
 	selected := make(map[int]bool)
 
 	for {
-		renderMenu(entries, selected, home, t1, t2)
+		renderMenu(entries, selected, home, t1, t2, t3, t4)
 		cmd, ok := readInput()
 		if !ok {
 			fmt.Print("\033[2J\033[H")
@@ -44,8 +44,10 @@ func Run() {
 			fmt.Println("  cancelled.")
 			return
 		case "a", "all":
-			for i := range entries {
-				selected[i] = true
+			for i, e := range entries {
+				if e.Cleanable {
+					selected[i] = true
+				}
 			}
 		case "n", "none":
 			selected = make(map[int]bool)
@@ -64,7 +66,7 @@ func Run() {
 	}
 }
 
-func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2 int64) {
+func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2, t3, t4 int64) {
 	fmt.Print("\033[2J\033[H")
 	fmt.Println("  orbital clean — reclaim your space")
 	fmt.Println()
@@ -79,12 +81,30 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 			fmt.Printf("  ── TIER %d: %s ──\n", currentTier, scan.TierLabel(currentTier))
 		}
 
+		numPrefix := fmt.Sprintf("[%2d]", i+1)
 		mark := "[ ]"
-		if selected[i] {
+		if !e.Cleanable {
+			numPrefix = " ── "
+			mark = "[🔒]"
+		} else if selected[i] {
 			mark = "[✓]"
 		}
 		relPath := strings.TrimPrefix(e.Path, home+"/")
-		fmt.Printf("    [%2d] %s  %-6s  %-22s  ~/%s\n", i+1, mark, scan.FormatSize(e.SizeMB), e.Label, relPath)
+
+		label := e.Label
+		if !e.Cleanable {
+			switch e.Tier {
+			case scan.TierApp:
+				label = fmt.Sprintf("%s  ← %s", e.Label, e.Description)
+			case scan.TierManual:
+				label = fmt.Sprintf("%s  ← %s", e.Label, e.Description)
+			}
+		}
+
+		fmt.Printf("    %s %s  %-6s  ~/%s\n", numPrefix, mark, scan.FormatSize(e.SizeMB), relPath)
+		if !e.Cleanable {
+			fmt.Printf("         %s\n", label)
+		}
 	}
 
 	fmt.Println()
@@ -100,17 +120,20 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 		selSize += entries[i].SizeMB
 	}
 
-	total := t1 + t2
+	totalAll := t1 + t2 + t3 + t4
+	totalCleanable := t1 + t2
 
 	fmt.Println("  ──────────────────────────────────────────────")
 	fmt.Println()
-	fmt.Printf("  ▸  %d selected (%s)  /  %s reclaimable\n", selCount, scan.FormatSize(selSize), scan.FormatSize(total))
+	fmt.Printf("  ▸  %d selected (%s)  /  %s reclaimable (%s cleanable)\n",
+		selCount, scan.FormatSize(selSize), scan.FormatSize(totalAll), scan.FormatSize(totalCleanable))
 	fmt.Println()
 	fmt.Println("  ── controls ──")
 	fmt.Println()
-	fmt.Println("    Type a number, then Enter — selects or unselects that item.")
-	fmt.Println("    a  =  select everything    d  =  review & delete selected")
-	fmt.Println("    n  =  unselect all         q  =  cancel & quit")
+	fmt.Println("    Type a number, then Enter — selects or unselects a cleanable item.")
+	fmt.Println("    🔒 items require app-level or manual action — see scan for details.")
+	fmt.Println("    a  =  select all cleanable  d  =  review & delete selected")
+	fmt.Println("    n  =  unselect all           q  =  cancel & quit")
 	fmt.Println()
 	fmt.Print("  > ")
 }
@@ -121,6 +144,9 @@ func toggleSelection(entries []scan.Entry, selected map[int]bool, input string) 
 		return
 	}
 	idx := n - 1
+	if !entries[idx].Cleanable {
+		return // non-cleanable items cannot be toggled
+	}
 	if selected[idx] {
 		delete(selected, idx)
 	} else {

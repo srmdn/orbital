@@ -14,6 +14,7 @@ const (
 	TierReinst = 2
 	TierApp    = 3
 	TierManual = 4
+	TierNever  = 5
 )
 
 type Entry struct {
@@ -22,6 +23,7 @@ type Entry struct {
 	Description string
 	SizeMB      int64
 	Tier        int
+	Cleanable   bool
 }
 
 type tierConfig struct {
@@ -53,12 +55,23 @@ var tier2Targets = []tierConfig{
 	{".windsurf", "Windsurf editor", "Windsurf IDE data"},
 }
 
+var tier3Targets = []tierConfig{
+	{"Library/Application Support/Google/Chrome", "Chrome profile", "Clear from Chrome settings — contains bookmarks & passwords"},
+	{"Library/Containers/com.docker.docker/Data", "Docker data", "Use 'docker system prune -a' instead"},
+}
+
+var tier4Targets = []tierConfig{
+	{"Downloads", "Downloads folder", "Review DMGs, zips, old files manually"},
+	{"Library/Application Support/Code", "VS Code workspaces", "Old workspaces — review before removing"},
+}
+
 // Collect scans the home directory and returns all reclaimable entries.
-func Collect(home string) ([]Entry, int64, int64) {
-	var entries []Entry
-	t1 := scanTier(home, tier1Targets, "", &entries, TierSafe, false)
-	t2 := scanTier(home, tier2Targets, "", &entries, TierReinst, false)
-	return entries, t1, t2
+func Collect(home string) (entries []Entry, t1, t2, t3, t4 int64) {
+	t1 = scanTier(home, tier1Targets, "", &entries, TierSafe, true, true)
+	t2 = scanTier(home, tier2Targets, "", &entries, TierReinst, true, true)
+	t3 = scanTier(home, tier3Targets, "", &entries, TierApp, false, false)
+	t4 = scanTier(home, tier4Targets, "", &entries, TierManual, false, false)
+	return
 }
 
 // HasGitTrap checks for an accidental .git repo in the home directory.
@@ -79,9 +92,11 @@ func TierLabel(tier int) string {
 	case TierReinst:
 		return "Reinstallable toolchains"
 	case TierApp:
-		return "Application-level cleanup"
+		return "App-level cleanup required"
 	case TierManual:
 		return "Manual review required"
+	case TierNever:
+		return "Never touch"
 	default:
 		return fmt.Sprintf("Tier %d", tier)
 	}
@@ -106,24 +121,29 @@ func Run() {
 
 	var entries []Entry
 
-	tier1Total := scanTier(home, tier1Targets, "TIER 1: Safe caches (auto-regenerate)", &entries, TierSafe, true)
+	tier1Total := scanTier(home, tier1Targets, "TIER 1: Safe caches (auto-regenerate)", &entries, TierSafe, true, true)
 	fmt.Println()
-	tier2Total := scanTier(home, tier2Targets, "TIER 2: Reinstallable toolchains", &entries, TierReinst, true)
+	tier2Total := scanTier(home, tier2Targets, "TIER 2: Reinstallable toolchains", &entries, TierReinst, true, true)
+	fmt.Println()
+	tier3Total := scanTier(home, tier3Targets, "TIER 3: App-level cleanup required", &entries, TierApp, false, true)
+	fmt.Println()
+	tier4Total := scanTier(home, tier4Targets, "TIER 4: Manual review required", &entries, TierManual, false, true)
 	fmt.Println()
 
 	checkGitTrapInternal(home)
 
-	total := tier1Total + tier2Total
+	total := tier1Total + tier2Total + tier3Total + tier4Total
 	if total > 0 {
 		fmt.Println("  ────────────────────────────────────────────────")
 		fmt.Printf("  Total reclaimable: %s\n", FormatSize(total))
 		fmt.Println()
-		fmt.Println("  Run 'orbital clean' for interactive cleanup")
-		fmt.Println("  Reference: docs/disk-audit-reference.md")
+		fmt.Println("  Run 'orbital clean' for interactive cleanup (Tiers 1-2 only)")
+		fmt.Println("  Tiers 3-4 require app-level or manual action — see docs")
+		fmt.Println("  Reference: docs/cleanup-guide.md")
 	}
 }
 
-func scanTier(home string, targets []tierConfig, header string, entries *[]Entry, tier int, verbose bool) int64 {
+func scanTier(home string, targets []tierConfig, header string, entries *[]Entry, tier int, cleanable, verbose bool) int64 {
 	if verbose {
 		fmt.Printf("  ── %s ──\n", header)
 	}
@@ -138,6 +158,7 @@ func scanTier(home string, targets []tierConfig, header string, entries *[]Entry
 				Description: t.Description,
 				SizeMB:      mb,
 				Tier:        tier,
+				Cleanable:   cleanable,
 			})
 			total += mb
 			if verbose {

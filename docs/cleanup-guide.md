@@ -2,6 +2,8 @@
 
 A reference for what caches exist on a developer Mac, what's safe to delete, and what's not.
 
+> **orbital CLI**: `orbital scan` detects all 4 reclaimable tiers. `orbital clean` handles Tiers 1-2 automatically. Tiers 3-4 require app-level or manual action. Tier 5 is never touched.
+
 ---
 
 ## Tier 1 — Safe (auto-regenerates)

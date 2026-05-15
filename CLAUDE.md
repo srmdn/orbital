@@ -36,7 +36,7 @@ go run ./cmd/orbital  # Run
 
 | Command | Status |
 |---|---|
-| `scan` | ✅ Working |
+| `scan` | ✅ Working — detects Tiers 1-4 |
 | `size` | ✅ Working |
 | `hogs` | ✅ Working |
 | `git-trap` | ✅ Working |
