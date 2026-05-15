@@ -64,10 +64,16 @@ func GetKnownTargets() []knownTarget {
 		{"Library/Application Support/Slack/", "Slack cache", "Slack workspace cache", TierApp, false, "Slack → Settings → Clear Cache", "messaging"},
 		{"Library/Application Support/discord/", "Discord cache", "Discord message cache", TierApp, false, "Discord → Settings → Clear Cache", "messaging"},
 
+		// ── Tier 2: Editor extensions (reinstallable) ──
+		{".vscode/extensions/", "VS Code extensions", "Editor extensions — reinstallable from marketplace", TierReinst, true, "reinstall from VS Code marketplace", "editor"},
+		{".cursor/extensions/", "Cursor extensions", "Editor extensions — reinstallable from marketplace", TierReinst, true, "reinstall from Cursor marketplace", "editor"},
+		{".trae/extensions/", "Trae extensions", "Editor extensions — reinstallable from marketplace", TierReinst, true, "reinstall from Trae marketplace", "editor"},
+		{".codeium/windsurf/extensions/", "Windsurf extensions", "Editor extensions — reinstallable from marketplace", TierReinst, true, "reinstall from Windsurf marketplace", "editor"},
+		{"Library/Application Support/Zed/extensions/installed/", "Zed extensions", "Editor extensions — reinstallable", TierReinst, true, "reinstall from Zed extensions panel", "editor"},
+
 		// ── Tier 4: Manual review ──
 		{"Downloads/", "Downloads folder", "Review DMGs, zips, old files", TierManual, false, "review DMGs, zips, old files", "system"},
 		{"Library/Application Support/Code/", "VS Code workspaces", "Old workspaces — review before removing", TierManual, false, "review before removing", "editor"},
-		{".vscode/extensions/", "VS Code extensions", "Stale or unused extensions", TierManual, false, "review stale extensions", "editor"},
 		{"Library/Application Support/com.apple.wallpaper/", "Wallpaper assets", "Downloaded wallpapers", TierManual, false, "review before removing", "system"},
 	}
 }

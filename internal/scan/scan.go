@@ -170,6 +170,9 @@ func Run() {
 		first = false
 	}
 
+	editorResults := ScanEditors(home)
+	PrintEditorSection(editorResults)
+
 	if count, totalMB := ScanStaleDMGs(home); count > 0 {
 		fmt.Println("  ── Stale disk images ──")
 		fmt.Printf("  %d DMGs in ~/Downloads — %s total\n", count, FormatSize(totalMB))
