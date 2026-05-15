@@ -84,25 +84,35 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 			mark = "[✓]"
 		}
 		relPath := strings.TrimPrefix(e.Path, home+"/")
-		fmt.Printf("    %2d %s  %-6s  %-22s  ~/%s\n", i+1, mark, scan.FormatSize(e.SizeMB), e.Label, relPath)
+		fmt.Printf("    [%2d] %s  %-6s  %-22s  ~/%s\n", i+1, mark, scan.FormatSize(e.SizeMB), e.Label, relPath)
 	}
 
 	fmt.Println()
 
 	if found, sizeMB := scan.HasGitTrap(home); found {
-		fmt.Printf("  ⚠️  .git trap in home directory (%s) — run 'orbital git-trap' for details\n", scan.FormatSize(sizeMB))
+		fmt.Printf("  ⚠️  .git trap in home directory (%s) — run 'orbital git-trap'\n", scan.FormatSize(sizeMB))
 		fmt.Println()
 	}
 
+	selCount := len(selected)
 	var selSize int64
 	for i := range selected {
 		selSize += entries[i].SizeMB
 	}
 
 	total := t1 + t2
-	fmt.Printf("  ── %d selected (%s) / %s reclaimable ──\n", len(selected), scan.FormatSize(selSize), scan.FormatSize(total))
+
+	fmt.Println("  ──────────────────────────────────────────────")
 	fmt.Println()
-	fmt.Println("  number: toggle  |  a: all  |  n: none  |  d: delete  |  q: quit")
+	fmt.Printf("  ▸  %d selected (%s)  /  %s reclaimable\n", selCount, scan.FormatSize(selSize), scan.FormatSize(total))
+	fmt.Println()
+	fmt.Println("  ── controls ──")
+	fmt.Println()
+	fmt.Println("    Type a number, then Enter — selects or unselects that item.")
+	fmt.Println("    a  =  select everything    d  =  review & delete selected")
+	fmt.Println("    n  =  unselect all         q  =  cancel & quit")
+	fmt.Println()
+	fmt.Print("  > ")
 }
 
 func toggleSelection(entries []scan.Entry, selected map[int]bool, input string) {
@@ -122,7 +132,8 @@ func confirmDelete(entries []scan.Entry, selected map[int]bool) bool {
 	fmt.Print("\033[2J\033[H")
 	fmt.Println("  confirm deletion")
 	fmt.Println()
-	fmt.Println("  You are about to permanently delete:")
+	fmt.Println("  These items will be permanently deleted:")
+	fmt.Println()
 
 	var total int64
 	for i := range selected {
@@ -131,9 +142,12 @@ func confirmDelete(entries []scan.Entry, selected map[int]bool) bool {
 		total += e.SizeMB
 	}
 
-	fmt.Println("  ─────────────────")
+	fmt.Println("  ────────────────────────")
 	fmt.Printf("    %s total\n", scan.FormatSize(total))
 	fmt.Println()
+	fmt.Println("  ⚠️  This action cannot be undone.")
+	fmt.Println()
+
 	fmt.Print("  Type 'yes, delete' to confirm: ")
 
 	input, _ := readInput()
