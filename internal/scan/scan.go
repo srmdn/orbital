@@ -270,6 +270,7 @@ func DiskSize() {
 			fields := strings.Fields(line)
 			if len(fields) >= 5 {
 				fmt.Printf("  Container: %s available\n", fields[3])
+				break
 			}
 		}
 	}
