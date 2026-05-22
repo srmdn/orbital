@@ -6,7 +6,7 @@ macOS disk cleanup tool for developers. Knows what caches are safe, what's not, 
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
 
-**Requirements:** macOS. That's it. Single binary, zero dependencies.
+**Requirements:** macOS 11+ (Apple Silicon) or macOS 10.13+ (Intel). Single binary, no deps.
 
 <pre>
   ██████╗ ██╗      ██████╗ ███╗   ██╗ ██████╗ 

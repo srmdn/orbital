@@ -134,6 +134,10 @@ func Run() {
 
 	entries, t1, t2, t3, t4 := Collect(home)
 
+	if prev, err := LoadLatest(home); err == nil {
+		printDelta(ComputeDelta(prev, entries))
+	}
+
 	var t1Entries, t2Entries, t3Entries, t4Entries []Entry
 	for _, e := range entries {
 		switch e.Tier {
@@ -200,6 +204,8 @@ func Run() {
 		fmt.Println()
 		fmt.Println("  Feedback? github.com/srmdn/plong/issues/new")
 	}
+
+	SaveSnapshot(home, entries, t1, t2, t3, t4)
 }
 
 func printTier(tier int, entries []Entry) {
