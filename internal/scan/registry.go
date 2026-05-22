@@ -35,7 +35,7 @@ func GetKnownTargets() []knownTarget {
 		{"Library/Caches/com.apple.wallpaper/", "Apple TV aerials", "Apple TV screen savers", TierSafe, true, "re-downloads if wallpaper needs it", "system"},
 		{"Library/Logs/", "System & user logs", "Application and system logs", TierSafe, true, "logs regenerate as apps run", "system"},
 		{"Library/Developer/Xcode/DerivedData/", "Xcode DerivedData", "Build artifacts", TierSafe, true, "regenerates on next build", "apple"},
-		{".Trash/", "Trash", "Trash contents", TierSafe, true, "orbital clean empties trash", "system"},
+		{".Trash/", "Trash", "Trash contents", TierSafe, true, "plong clean empties trash", "system"},
 		{".cargo/registry/", "Cargo registry cache", "Rust crate cache", TierSafe, true, "cargo cache --autoclean", "rust"},
 		{".gradle/caches/", "Gradle cache", "Java/Kotlin build cache", TierSafe, true, "gradle cleanBuildCache", "jvm"},
 		{".m2/repository/", "Maven cache", "Java dependency cache", TierSafe, true, "re-downloads on next build", "jvm"},

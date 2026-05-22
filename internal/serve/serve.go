@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/srmdn/orbital/internal/scan"
+	"github.com/srmdn/plong/internal/scan"
 )
 
 //go:embed templates/*
@@ -141,7 +141,7 @@ func Run(version string) error {
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://localhost:%d", port)
 
-	fmt.Printf("\n  🚀 orbital dashboard → %s\n", url)
+	fmt.Printf("\n  🚀 plong dashboard → %s\n", url)
 	fmt.Println("  scanning...")
 
 	go func() {

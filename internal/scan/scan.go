@@ -196,9 +196,9 @@ func Run() {
 		fmt.Println("  ────────────────────────────────────────────────")
 		fmt.Printf("  Total reclaimable: %s\n", FormatSize(total))
 		fmt.Println()
-		fmt.Println("  'orbital clean' — free Tiers 1-2  ·  'orbital hogs' — full list  ·  docs/cleanup-guide.md")
+		fmt.Println("  'plong clean' — free Tiers 1-2  ·  'plong hogs' — full list  ·  docs/cleanup-guide.md")
 		fmt.Println()
-		fmt.Println("  Feedback? github.com/srmdn/orbital/issues/new")
+		fmt.Println("  Feedback? github.com/srmdn/plong/issues/new")
 	}
 }
 
@@ -233,7 +233,7 @@ func printTier(tier int, entries []Entry) {
 			restMB += e.SizeMB
 		}
 		fmt.Printf("    ... +%d more (%s)\n", len(entries)-maxItems, FormatSize(restMB))
-		fmt.Println("    Run 'orbital hogs' for full breakdown")
+		fmt.Println("    Run 'plong hogs' for full breakdown")
 	}
 }
 

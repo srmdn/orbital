@@ -32,7 +32,7 @@ func IsSafetyExcluded(path string) bool {
 	return false
 }
 
-// GetSafetyExclusions returns the list of relative paths orbital never scans.
+// GetSafetyExclusions returns the list of relative paths plong never scans.
 func GetSafetyExclusions() []string {
 	return safetyExclusions
 }

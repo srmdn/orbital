@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/srmdn/orbital/internal/clean"
-	"github.com/srmdn/orbital/internal/scan"
-	"github.com/srmdn/orbital/internal/serve"
+	"github.com/srmdn/plong/internal/clean"
+	"github.com/srmdn/plong/internal/scan"
+	"github.com/srmdn/plong/internal/serve"
 )
 
 var version = "0.2.1"
@@ -43,7 +43,7 @@ func main() {
 	case "git-trap":
 		scan.CheckGitTrap()
 	case "version", "--version", "-v":
-		fmt.Printf("orbital v%s\n", version)
+		fmt.Printf("plong v%s\n", version)
 	case "help", "--help", "-h", "h":
 		printBanner()
 		printHelp()
@@ -59,14 +59,14 @@ func main() {
 func printBanner() {
 	fmt.Println()
 	fmt.Println()
-	fmt.Println("  ██████╗ ██████╗ ██████╗ ██╗████████╗ █████╗ ██╗     ")
-	fmt.Println("  ██╔═══██╗██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗██║     ")
-	fmt.Println("  ██║   ██║██████╔╝██████╔╝██║   ██║   ███████║██║     ")
-	fmt.Println("  ██║   ██║██╔══██╗██╔══██╗██║   ██║   ██╔══██║██║     ")
-	fmt.Println("  ╚██████╔╝██║  ██║██████╔╝██║   ██║   ██║  ██║███████╗")
-	fmt.Println("   ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝")
+	fmt.Println("  ██████╗ ██╗      ██████╗ ███╗   ██╗ ██████╗ ")
+	fmt.Println("  ██╔══██╗██║     ██╔═══██╗████╗  ██║██╔════╝ ")
+	fmt.Println("  ██████╔╝██║     ██║   ██║██╔██╗ ██║██║  ███╗")
+	fmt.Println("  ██╔═══╝ ██║     ██║   ██║██║╚██╗██║██║   ██║")
+	fmt.Println("  ██║     ███████╗╚██████╔╝██║ ╚████║╚██████╔╝")
+	fmt.Println("  ╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ")
 	fmt.Println("")
-	fmt.Println("  the friendly mac disk doctor")
+	fmt.Println("  relief sound, finally clear")
 	fmt.Println("")
 }
 
@@ -82,5 +82,5 @@ func printHelp() {
 	fmt.Println("  version       show version")
 	fmt.Println("  help          show this help")
 	fmt.Println("")
-	fmt.Println("docs:  https://github.com/srmdn/orbital")
+	fmt.Println("docs:  https://github.com/srmdn/plong")
 }

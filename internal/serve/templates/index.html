@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {{if .Loading}}<meta http-equiv="refresh" content="5">{{end}}
-<title>orbital — disk dashboard</title>
+<title>plong — disk dashboard</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -247,20 +247,20 @@
 {{if .Loading}}
 <div class="loading-page">
   <div class="spinner"></div>
-  <p class="loading-text">orbital is scanning your disk...</p>
+  <p class="loading-text">plong is scanning your disk...</p>
   <p class="loading-sub">This usually takes 10-30 seconds</p>
 </div>
 {{else}}
 <div class="container">
 
 <header>
-  <div><h1>orbital</h1><span class="sub">macOS disk dashboard</span></div>
+  <div><h1>plong</h1><span class="sub">macOS disk dashboard</span></div>
   <span class="sub">v{{.Version}}</span>
 </header>
 
 {{if .GitTrap.Found}}
 <div class="git-trap">
-  <span class="warn">⚠️ .git trap detected</span> — {{.GitTrap.SizeMB | formatSize}} accidental git repo in home. Run <code>orbital git-trap</code> to fix.
+  <span class="warn">⚠️ .git trap detected</span> — {{.GitTrap.SizeMB | formatSize}} accidental git repo in home. Run <code>plong git-trap</code> to fix.
 </div>
 {{end}}
 
@@ -279,7 +279,7 @@
   <div class="card">
     <div class="label">Cleanable (T1-2)</div>
     <div class="value">{{.Totals.Cleanable | formatSize}}</div>
-    <div class="sub">via <code>orbital clean</code></div>
+    <div class="sub">via <code>plong clean</code></div>
   </div>
   <div class="card">
     <div class="label">App-level (T3)</div>
@@ -362,14 +362,14 @@
     </span>
     <span id="clean-status"></span>
   </div>
-  <p class="clean-note">Or run <code>orbital clean</code> in terminal for selective cleanup.</p>
+  <p class="clean-note">Or run <code>plong clean</code> in terminal for selective cleanup.</p>
 </div>
 {{end}}
 {{end}}
 
 <div class="footer">
-  <a href="https://github.com/srmdn/orbital" target="_blank">github.com/srmdn/orbital</a>
-  &nbsp;·&nbsp; run <code>orbital scan</code> in terminal for text output
+  <a href="https://github.com/srmdn/plong" target="_blank">github.com/srmdn/plong</a>
+  &nbsp;·&nbsp; run <code>plong scan</code> in terminal for text output
 </div>
 
 </div>

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/srmdn/orbital/internal/scan"
+	"github.com/srmdn/plong/internal/scan"
 )
 
 var stdin = bufio.NewScanner(os.Stdin)
@@ -69,7 +69,7 @@ func Run() {
 
 func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2, t3, t4 int64) {
 	fmt.Print("\033[2J\033[H")
-	fmt.Println("  orbital clean — reclaim your space")
+	fmt.Println("  plong clean — reclaim your space")
 	fmt.Println()
 
 	currentTier := 0
@@ -101,7 +101,7 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 	fmt.Println()
 
 	if found, sizeMB := scan.HasGitTrap(home); found {
-		fmt.Printf("  ⚠️  .git trap in home directory (%s) — run 'orbital git-trap'\n", scan.FormatSize(sizeMB))
+		fmt.Printf("  ⚠️  .git trap in home directory (%s) — run 'plong git-trap'\n", scan.FormatSize(sizeMB))
 		fmt.Println()
 	}
 
@@ -246,7 +246,7 @@ func executeDelete(entries []scan.Entry, selected map[int]bool) {
 		fmt.Printf("  (%d items could not be deleted)\n", failed)
 	}
 	fmt.Println()
-	fmt.Println("  Run 'orbital scan' to verify.")
+	fmt.Println("  Run 'plong scan' to verify.")
 }
 
 func readInput() (string, bool) {

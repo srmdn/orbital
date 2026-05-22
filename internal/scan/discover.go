@@ -54,7 +54,7 @@ func discoverHome(home string, known map[string]bool) []Entry {
 			SizeMB:      mb,
 			Tier:        TierSafe,
 			Cleanable:   false,
-			CleanHint:   "manual review — not in orbital's registry",
+			CleanHint:   "manual review — not in plong's registry",
 			StackTag:    "",
 		})
 	}
@@ -105,7 +105,7 @@ func discoverContainers(home string, known map[string]bool) []Entry {
 			SizeMB:      mb,
 			Tier:        TierApp,
 			Cleanable:   false,
-			CleanHint:   "manual review — not in orbital's registry",
+			CleanHint:   "manual review — not in plong's registry",
 			StackTag:    "",
 		})
 	}
@@ -144,7 +144,7 @@ func discoverSubdir(home, relParent string, known map[string]bool, tier int, cle
 			SizeMB:      mb,
 			Tier:        tier,
 			Cleanable:   cleanable,
-			CleanHint:   "manual review — not in orbital's registry",
+			CleanHint:   "manual review — not in plong's registry",
 			StackTag:    "",
 		})
 	}

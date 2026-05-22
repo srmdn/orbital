@@ -139,6 +139,6 @@ func PrintEditorSection(results []EditorResult) {
 
 	if len(results) < 2 {
 		fmt.Println()
-		fmt.Println("    Missing your editor? github.com/srmdn/orbital/issues/new")
+		fmt.Println("    Missing your editor? github.com/srmdn/plong/issues/new")
 	}
 }

@@ -1,10 +1,10 @@
-# CLAUDE.md — orbital
+# CLAUDE.md — plong
 
 ## Identity
 
-- Repo: srmdn/orbital
+- Repo: srmdn/plong
 - Description: macOS disk cleanup tool with developer awareness
-- Location: ~/Developer/projects/github/orbital
+- Location: ~/Developer/projects/github/plong
 
 ## Stack
 
@@ -15,7 +15,7 @@
 ## Project Structure
 
 ```
-cmd/orbital/      # CLI entry point
+cmd/plong/        # CLI entry point
 internal/
   scan/           # Disk scanning engine
   clean/          # Interactive cleanup TUI
@@ -30,7 +30,7 @@ docs/             # Reference documentation
 ```bash
 go build ./...        # Check compilation
 go vet ./...          # Lint
-go run ./cmd/orbital  # Run
+go run ./cmd/plong    # Run
 ```
 
 ## Commands
@@ -64,5 +64,5 @@ go run ./cmd/orbital  # Run
 
 ```bash
 go test ./...          # Unit tests
-go run ./cmd/orbital scan   # Integration smoke test
+go run ./cmd/plong scan    # Integration smoke test
 ```

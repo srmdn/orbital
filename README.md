@@ -1,10 +1,19 @@
-# orbital
+# plong
 
 macOS disk cleanup tool for developers. Knows what caches are safe, what's not, and what's silently eating your disk.
 
 ![](https://img.shields.io/badge/version-0.2.1-blue)
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
+
+<pre>
+  ██████╗ ██╗      ██████╗ ███╗   ██╗ ██████╗ 
+  ██╔══██╗██║     ██╔═══██╗████╗  ██║██╔════╝ 
+  ██████╔╝██║     ██║   ██║██╔██╗ ██║██║  ███╗
+  ██╔═══╝ ██║     ██║   ██║██║╚██╗██║██║   ██║
+  ██║     ███████╗╚██████╔╝██║ ╚████║╚██████╔╝
+  ╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ 
+</pre>
 
 ## Why
 
@@ -14,29 +23,29 @@ General disk cleaners show you a treemap but can't tell the difference between:
 - Chrome **cache** vs Chrome **profile data** (bookmarks, passwords)
 - A Claude sandbox VM vs your actual project files
 
-Orbital knows. It was built from a real audit of a developer MacBook and understands every stack.
+Plong knows. It was built from a real audit of a developer MacBook and understands every stack.
 
 ## Commands
 
 ```bash
-orbital scan      # Full audit — finds everything reclaimable
-orbital size      # Quick disk space check
-orbital hogs      # Top 20 space consumers in ~
-orbital git-trap  # Check for accidental .git in home
-orbital clean     # Interactive cleanup (coming soon)
-orbital serve     # Web dashboard (coming soon)
+plong scan      # Full audit — finds everything reclaimable
+plong size      # Quick disk space check
+plong hogs      # Top 20 space consumers in ~
+plong git-trap  # Check for accidental .git in home
+plong clean     # Interactive cleanup (coming soon)
+plong serve     # Web dashboard (coming soon)
 ```
 
 ## Install
 
 ```bash
 # Build from source
-git clone https://github.com/srmdn/orbital.git
-cd orbital
-go build -o /usr/local/bin/orbital ./cmd/orbital
+git clone https://github.com/srmdn/plong.git
+cd plong
+go build -o /usr/local/bin/plong ./cmd/plong
 
 # Homebrew (coming soon)
-brew install srmdn/tap/orbital
+brew install srmdn/tap/plong
 ```
 
 ## Cleanup Tiers
