@@ -1,6 +1,7 @@
 # Binary
 /plong
 
-# Personal audit results (keep local only)
+# Personal / internal docs (keep local only)
 docs/disk-audit-reference.md
+docs/expansion-plan.md
 .sisyphus/

@@ -9,7 +9,7 @@
 ## Stack
 
 - **CLI**: Go 1.26+ (single binary, no runtime deps)
-- **Dashboard**: Astro (planned, served by Go binary via embed)
+- **Dashboard**: Go HTML templates via embed (no JS framework)
 - **Distribution**: Homebrew tap
 
 ## Project Structure
@@ -21,7 +21,6 @@ internal/
   clean/          # Interactive cleanup TUI
   serve/          # HTTP server + embedded dashboard
     templates/    # Go HTML templates (embedded)
-dashboard/        # Astro web dashboard (planned, empty scaffold)
 docs/             # Reference documentation
 ```
 
