@@ -6,6 +6,8 @@ macOS disk cleanup tool for developers. Knows what caches are safe, what's not, 
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
 
+**Requirements:** macOS. That's it. Single binary, zero dependencies.
+
 <pre>
   ██████╗ ██╗      ██████╗ ███╗   ██╗ ██████╗ 
   ██╔══██╗██║     ██╔═══██╗████╗  ██║██╔════╝ 
@@ -23,7 +25,7 @@ General disk cleaners show you a treemap but can't tell the difference between:
 - Chrome **cache** vs Chrome **profile data** (bookmarks, passwords)
 - A Claude sandbox VM vs your actual project files
 
-Plong knows. It was built from a real audit of a developer MacBook and understands every stack.
+Plong knows. Built from a real audit of a developer MacBook — understands every stack.
 
 ## Install
 
@@ -31,7 +33,7 @@ Plong knows. It was built from a real audit of a developer MacBook and understan
 brew install srmdn/tap/plong
 ```
 
-Or build from source:
+Or build from source (requires Go 1.26+):
 
 ```bash
 git clone https://github.com/srmdn/plong.git
@@ -55,41 +57,59 @@ plong serve     # Web dashboard (opens in browser)
 ```
 $ plong scan
 
-  🧹 scanning your mac...
+  scanning your mac...
 
-  ── GIT TRAP ──
-  ✓ clean — no .git repos outside projects
-
-  ── TIER 1: Safe caches · 31.6 GB ──
-  ✓ ~/Library/Caches/Homebrew            7.2 GB  · rm -rf
-  ✓ ~/.npm                               4.1 GB  · npm cache clean --force
-  ✓ ~/Library/Caches/pip                 2.8 GB  · rm -rf
-  ✓ ~/.bun/install/cache                 1.9 GB  · rm -rf
-  ✓ /opt/homebrew/Caches                 1.2 GB  · rm -rf
-    ... +31 more (14.4 GB)
+  ── TIER 1: Safe · 31.6 GB ──
+    ✓  7.2 GB  Homebrew cache              Brew download cache
+    ✓  4.1 GB  npm cache                    Node package manager cache [node]
+    ✓  2.8 GB  System caches                pip, HuggingFace, SDK caches [system]
+    ✓  1.9 GB  Go module cache              Downloaded Go modules [go]
+    ✓  1.2 GB  Bun cache                    Bun package manager cache [node]
+    ... +26 more (14.4 GB)
+    Run 'plong hogs' for full breakdown
 
   ── TIER 2: Reinstallable · 18.3 GB ──
-  ✓ ~/.nvm                              5.6 GB  · nvm cache clear
-  ✓ ~/Android                            4.2 GB  · Android Studio → SDK Manager
-  ✓ ~/Library/Application Support/Code   2.1 GB  · rm -rf
-  🔒 ~/.docker                           8.2 GB  · docker system prune
-    ... +12 more (8.2 GB)
+    ✓  5.6 GB  Node.js versions             Node version manager installs [node]
+    ✓  4.2 GB  Android SDK                  Android SDK and emulators [mobile]
+    ✓  2.1 GB  Cursor editor data           Cursor IDE data [editor]
+    🔒  8.2 GB  Docker data                  Docker images, containers, volumes [docker]
+    ✓  1.7 GB  Rust toolchain               Rustup toolchain installs [rust]
+    ... +9 more (8.2 GB)
+    Run 'plong hogs' for full breakdown
 
-  ── TIER 3: App cleanup · 8.7 GB ──
-  ✓ ~/Downloads/*.dmg                    1.8 GB  · review then delete
-  🔒 ~/Library/Application Support/Claude 3.2 GB  · clear in Claude
-    ... +5 more (3.7 GB)
+  ── TIER 3: App cleanup · 15.8 GB ──
+    🔒  4.1 GB  Chrome profile               Browser profile with bookmarks & passwords [browser]
+    🔒  3.2 GB  Slack cache                  Slack workspace cache [messaging]
+    🔒  2.5 GB  iOS backups                  iPhone/iPad backups [apple]
+    ... +3 more (6.0 GB)
+    Run 'plong hogs' for full breakdown
 
   ── TIER 4: Manual review · 22.1 GB ──
-  🔒 ~/Music                             12.4 GB · manual review
-  🔒 ~/Movies                             5.3 GB · manual review
-    ... +8 more (4.4 GB)
+    🔒  12.4 GB  Downloads folder             Review DMGs, zips, old files [system]
+    🔒  5.3 GB  VS Code workspaces            Old workspaces — review before removing [editor]
+    ... +3 more (4.4 GB)
+    Run 'plong hogs' for full breakdown
 
-  ──────────────────────────────────────
-  Total reclaimable: 80.7 GB
-  'plong clean' — free Tiers 1-2 · 'plong hogs' — full list
+  ── Code editors ──
+    VS Code      45 extensions · 12 stale · 1.2 GB
+    Cursor       28 extensions · 8 stale · 890 MB
+    Windsurf     12 extensions · 3 stale · 340 MB
+    23 stale extensions total — 2.4 GB reclaimable (Tier 2)
 
-  Found a missing cache? github.com/srmdn/plong/issues/new
+  ── Stale disk images ──
+  5 DMGs in ~/Downloads — 3.2 GB total
+  Run rm ~/Downloads/*.dmg to remove (review first)
+
+  ── Large old files (>100 MB, 90+ days) ──
+    1.2 GB  ~/Downloads/old-backup.tar.gz  (modified 2025-01-15)
+    450 MB  ~/Downloads/Video.mp4          (modified 2025-03-02)
+
+  ────────────────────────────────────────────────
+  Total reclaimable: 85.3 GB
+
+  'plong clean' — free Tiers 1-2  ·  'plong hogs' — full list  ·  docs/cleanup-guide.md
+
+  Feedback? github.com/srmdn/plong/issues/new
 ```
 
 ## Cleanup Tiers
