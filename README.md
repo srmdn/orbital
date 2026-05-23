@@ -2,7 +2,7 @@
 
 macOS disk cleanup tool for developers. Knows what caches are safe, what's not, and what's silently eating your disk.
 
-![](https://img.shields.io/badge/version-0.2.2-blue)
+![](https://img.shields.io/badge/version-0.2.3-blue)
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
 
@@ -48,6 +48,7 @@ plong scan      # Full audit — finds everything reclaimable
 plong size      # Quick disk space check
 plong hogs      # Top 20 space consumers in ~
 plong git-trap  # Check for accidental .git in home
+plong history   # View past scan snapshots with deltas
 plong clean     # Interactive cleanup TUI
 plong serve     # Web dashboard (opens in browser)
 ```
