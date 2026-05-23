@@ -9,7 +9,7 @@ import (
 	"github.com/srmdn/plong/internal/serve"
 )
 
-var version = "0.2.2"
+var version = "0.2.3"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -42,6 +42,8 @@ func main() {
 		scan.TopHogs()
 	case "git-trap":
 		scan.CheckGitTrap()
+	case "history":
+		scan.PrintHistory(os.Getenv("HOME"))
 	case "version", "--version", "-v":
 		fmt.Printf("plong v%s\n", version)
 	case "help", "--help", "-h", "h":
@@ -78,6 +80,7 @@ func printHelp() {
 	fmt.Println("  size          quick disk space check")
 	fmt.Println("  hogs          space hogs in ~ grouped by tier")
 	fmt.Println("  git-trap      check for accidental .git in home")
+	fmt.Println("  history       view past scan snapshots with deltas")
 	fmt.Println("  clean         interactive cleanup")
 	fmt.Println("  version       show version")
 	fmt.Println("  help          show this help")

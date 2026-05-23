@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -265,4 +266,88 @@ func pruneHistory(home string) {
 	for _, e := range entries[:len(entries)-maxSnapshots] {
 		os.Remove(filepath.Join(dir, e.Name()))
 	}
+}
+
+// ListSnapshots reads all saved scan snapshots from ~/.plong/history/ and
+// returns them sorted by timestamp (newest first).
+func ListSnapshots(home string) ([]Snapshot, error) {
+	dir := historyDir(home)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var snaps []Snapshot
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var snap Snapshot
+		if err := json.Unmarshal(data, &snap); err != nil {
+			continue
+		}
+		snaps = append(snaps, snap)
+	}
+
+	sort.Slice(snaps, func(i, j int) bool {
+		return snaps[i].Timestamp.After(snaps[j].Timestamp)
+	})
+
+	return snaps, nil
+}
+
+// PrintHistory displays the scan history from saved snapshots.
+func PrintHistory(home string) {
+	snaps, err := ListSnapshots(home)
+	if err != nil || len(snaps) == 0 {
+		fmt.Println()
+		fmt.Println("  No scan history yet.")
+		fmt.Println("  Run 'plong scan' to create your first snapshot.")
+		fmt.Println()
+		return
+	}
+
+	fmt.Println()
+	fmt.Printf("  Scan History (%d snapshots)\n", len(snaps))
+	fmt.Println()
+
+	for i, snap := range snaps {
+		total := snap.T1MB + snap.T2MB + snap.T3MB + snap.T4MB
+
+		var parts []string
+		if snap.T1MB > 0 {
+			parts = append(parts, fmt.Sprintf("T1 %s", FormatSize(snap.T1MB)))
+		}
+		if snap.T2MB > 0 {
+			parts = append(parts, fmt.Sprintf("T2 %s", FormatSize(snap.T2MB)))
+		}
+		if snap.T3MB > 0 {
+			parts = append(parts, fmt.Sprintf("T3 %s", FormatSize(snap.T3MB)))
+		}
+		if snap.T4MB > 0 {
+			parts = append(parts, fmt.Sprintf("T4 %s", FormatSize(snap.T4MB)))
+		}
+		tierStr := strings.Join(parts, " · ")
+
+		dateStr := snap.Timestamp.Format("Jan 2 15:04")
+		fmt.Printf("  📅 %s  ─  %s  (%s)\n", dateStr, FormatSize(total), tierStr)
+
+		if i+1 < len(snaps) {
+			prev := snaps[i+1]
+			prevTotal := prev.T1MB + prev.T2MB + prev.T3MB + prev.T4MB
+			diff := total - prevTotal
+			sign := "+"
+			if diff < 0 {
+				sign = ""
+			}
+			fmt.Printf("     %s%s from %s\n", sign, FormatSize(diff), prev.Timestamp.Format("Jan 2 15:04"))
+		} else {
+			fmt.Println("     (oldest)")
+		}
+	}
+	fmt.Println()
 }

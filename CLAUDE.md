@@ -40,6 +40,7 @@ go run ./cmd/plong    # Run
 | `size` | ✅ Working |
 | `hogs` | ✅ Working |
 | `git-trap` | ✅ Working |
+| `history` | ✅ Working — lists past snapshots with per-tier deltas |
 | `clean` | ✅ Working |
 | `serve` (dashboard) | ✅ Working — embedded HTML dashboard |
 
