@@ -109,6 +109,29 @@
     border: 1px solid var(--border);
   }
 
+  /* ── Quote ── */
+
+  .hero-quote {
+    max-width: 640px;
+    margin: 0 auto 32px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--tier2);
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .hero-quote a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .hero-quote a:hover { text-decoration: underline; }
+
   /* ── Features ── */
 
   .features {
@@ -363,6 +386,10 @@
 
   <h1>macOS disk cleanup for developers</h1>
   <p class="tagline">Safety tiers, CleanHints, and stack detection — built from a real dev machine audit.</p>
+
+  <div class="hero-quote">
+    Inspired by <a href="https://github.com/dwindiramadhana/dwcleaner">dwcleaner</a> — the original developer-aware macOS cleaner that caught what CleanMyMac and Mole missed.
+  </div>
 
   <div class="install">$ brew install srmdn/tap/plong</div>
   <br>
