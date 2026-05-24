@@ -52,6 +52,7 @@ plong hogs      # Top 20 space consumers in ~
 plong git-trap  # Check for accidental .git in home
 plong history   # View past scan snapshots with deltas
 plong clean     # Interactive cleanup TUI
+plong clean --dry-run  # Preview without deleting
 plong serve     # Web dashboard (opens in browser)
 ```
 

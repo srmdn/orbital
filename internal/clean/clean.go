@@ -14,7 +14,7 @@ import (
 
 var stdin = bufio.NewScanner(os.Stdin)
 
-func Run() {
+func Run(dryRun bool) {
 	home := os.Getenv("HOME")
 
 	fmt.Print("\033[2J\033[H")
@@ -31,7 +31,7 @@ func Run() {
 	selected := make(map[int]bool)
 
 	for {
-		renderMenu(entries, selected, home, t1, t2, t3, t4)
+		renderMenu(entries, selected, home, t1, t2, t3, t4, dryRun)
 		cmd, ok := readInput()
 		if !ok {
 			fmt.Print("\033[2J\033[H")
@@ -56,6 +56,10 @@ func Run() {
 			if len(selected) == 0 {
 				continue
 			}
+			if dryRun {
+				executeDryRun(entries, selected)
+				return
+			}
 			confirmed := confirmDelete(entries, selected)
 			if confirmed {
 				executeDelete(entries, selected)
@@ -67,9 +71,14 @@ func Run() {
 	}
 }
 
-func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2, t3, t4 int64) {
+func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2, t3, t4 int64, dryRun bool) {
 	fmt.Print("\033[2J\033[H")
 	fmt.Println("  plong clean — reclaim your space")
+	if dryRun {
+		fmt.Println("  ═══════════════════════════════")
+		fmt.Println("    DRY RUN — nothing will be deleted")
+		fmt.Println("  ═══════════════════════════════")
+	}
 	fmt.Println()
 
 	currentTier := 0
@@ -123,7 +132,11 @@ func renderMenu(entries []scan.Entry, selected map[int]bool, home string, t1, t2
 	fmt.Println()
 	fmt.Println("    Type a number, then Enter — selects or unselects a cleanable item.")
 	fmt.Println("    🔒 items require app-level or manual action — see scan for details.")
-	fmt.Println("    a  =  select all cleanable  d  =  review & delete selected")
+	if dryRun {
+		fmt.Println("    a  =  select all cleanable  d  =  preview what would be deleted")
+	} else {
+		fmt.Println("    a  =  select all cleanable  d  =  review & delete selected")
+	}
 	fmt.Println("    n  =  unselect all           q  =  cancel & quit")
 	fmt.Println()
 	fmt.Print("  > ")
@@ -254,4 +267,34 @@ func readInput() (string, bool) {
 		return strings.TrimSpace(strings.ToLower(stdin.Text())), true
 	}
 	return "", false
+}
+
+func executeDryRun(entries []scan.Entry, selected map[int]bool) {
+	fmt.Print("\033[2J\033[H")
+	fmt.Println("  dry run — nothing will be deleted")
+	fmt.Println()
+	fmt.Println("  These items would be deleted in a real run:")
+	fmt.Println()
+
+	home := os.Getenv("HOME")
+	trashPath := filepath.Join(home, ".Trash")
+	var total int64
+	for i := range selected {
+		e := entries[i]
+		label := e.Label
+		if e.Path == trashPath || strings.HasSuffix(e.Path, "/.Trash") {
+			label = "Empty Trash"
+		}
+		fmt.Printf("    %-6s  %s\n", scan.FormatSize(e.SizeMB), label)
+		fmt.Printf("           ~/%s\n", strings.TrimPrefix(e.Path, home+"/"))
+		total += e.SizeMB
+	}
+
+	fmt.Println("  ────────────────────────")
+	fmt.Printf("    %s would be freed (%d items)\n", scan.FormatSize(total), len(selected))
+	fmt.Println()
+	fmt.Println("  Run 'plong clean' without --dry-run to delete these items.")
+	fmt.Println()
+	fmt.Println("  Press Enter to exit.")
+	readInput()
 }

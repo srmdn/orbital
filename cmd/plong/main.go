@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/srmdn/plong/internal/clean"
 	"github.com/srmdn/plong/internal/scan"
@@ -50,7 +51,8 @@ func main() {
 		printBanner()
 		printHelp()
 	case "clean":
-		clean.Run()
+		dryRun := slices.Contains(os.Args, "--dry-run") || slices.Contains(os.Args, "-n")
+		clean.Run(dryRun)
 	default:
 		fmt.Printf("Unknown command: %s\n\n", os.Args[1])
 		printHelp()
@@ -82,6 +84,7 @@ func printHelp() {
 	fmt.Println("  git-trap      check for accidental .git in home")
 	fmt.Println("  history       view past scan snapshots with deltas")
 	fmt.Println("  clean         interactive cleanup")
+	fmt.Println("                  --dry-run, -n   preview without deleting")
 	fmt.Println("  version       show version")
 	fmt.Println("  help          show this help")
 	fmt.Println("")
