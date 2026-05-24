@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>plong — macOS disk cleanup for developers</title>
+<meta name="description" content="Developer-aware macOS disk cleanup tool. Safety tiers, CleanHints, and stack detection built from a real dev machine audit.">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --tier1: #3fb950;
+    --tier2: #d29922;
+    --tier3: #db6d28;
+    --tier4: #f85149;
+    --code-bg: #0a0e13;
+    --accent: #58a6ff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Hero ── */
+
+  .hero {
+    padding: 80px 0 48px;
+    text-align: center;
+  }
+
+  .banner {
+    font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--tier1);
+    margin-bottom: 24px;
+    white-space: pre;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .hero .tagline {
+    font-size: 18px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .hero .install {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+    font-size: 14px;
+    color: var(--tier1);
+    margin-bottom: 24px;
+  }
+
+  .hero .buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+
+  .btn-primary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Features ── */
+
+  .features {
+    padding: 48px 0;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    border-left: 3px solid var(--tier1);
+  }
+  .feature-card:nth-child(2) { border-left-color: var(--tier2); }
+  .feature-card:nth-child(3) { border-left-color: var(--accent); }
+
+  .feature-card .icon {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Demo ── */
+
+  .demo {
+    padding: 48px 0;
+  }
+
+  .demo h2, .tiers h2, .install-section h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+
+  .terminal {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .terminal-header {
+    background: var(--surface);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .terminal-dot.red    { background: #ff5f56; }
+  .terminal-dot.yellow { background: #ffbd2e; }
+  .terminal-dot.green  { background: #27c93f; }
+
+  .terminal-header .title {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .terminal-body {
+    padding: 16px;
+    font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .terminal-body .prompt   { color: var(--tier1); }
+  .terminal-body .t1       { color: var(--tier1); font-weight: 600; }
+  .terminal-body .t2       { color: var(--tier2); font-weight: 600; }
+  .terminal-body .t3       { color: var(--tier3); font-weight: 600; }
+  .terminal-body .t4       { color: var(--tier4); font-weight: 600; }
+  .terminal-body .muted    { color: var(--muted); }
+  .terminal-body .highlight{ color: var(--accent); }
+  .terminal-body .divider  { color: var(--muted); }
+
+  .tag {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--bg);
+  }
+  .tag.node   { background: #3fb950; }
+  .tag.go     { background: #00ADD8; }
+  .tag.python { background: #3572A5; }
+  .tag.rust   { background: #dea584; }
+  .tag.system { background: var(--muted); }
+  .tag.docker { background: #2496ed; }
+  .tag.browser{ background: #4285f4; }
+  .tag.editor { background: #007acc; }
+  .tag.mobile { background: #3ddc84; }
+  .tag.apple  { background: #a2aaad; }
+  .tag.messaging { background: #4A154B; }
+
+  /* ── Tiers Table ── */
+
+  .tiers {
+    padding: 48px 0;
+  }
+
+  .tiers-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .tiers-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tiers-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .tiers-table .tier-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+
+  .tier-dot.t1 { background: var(--tier1); }
+  .tier-dot.t2 { background: var(--tier2); }
+  .tier-dot.t3 { background: var(--tier3); }
+  .tier-dot.t4 { background: var(--tier4); }
+
+  /* ── Install ── */
+
+  .install-section {
+    padding: 48px 0;
+  }
+
+  .install-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .install-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  .install-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  .install-card code {
+    display: block;
+    font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+    font-size: 13px;
+    color: var(--tier1);
+    margin-bottom: 8px;
+  }
+
+  .install-card .desc {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Footer ── */
+
+  .footer {
+    padding: 48px 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .footer a:hover { text-decoration: underline; }
+
+  .footer .links {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  /* ── Responsive ── */
+
+  @media (max-width: 600px) {
+    .hero { padding: 48px 0 32px; }
+    .banner { font-size: 10px; }
+    .hero h1 { font-size: 22px; }
+    .hero .tagline { font-size: 15px; }
+    .terminal-body { font-size: 11px; padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ Hero ═══ -->
+
+<div class="hero">
+  <div class="banner">  ██████╗ ██╗      ██████╗ ███╗   ██╗ ██████╗ 
+  ██╔══██╗██║     ██╔═══██╗████╗  ██║██╔════╝ 
+  ██████╔╝██║     ██║   ██║██╔██╗ ██║██║  ███╗
+  ██╔═══╝ ██║     ██║   ██║██║╚██╗██║██║   ██║
+  ██║     ███████╗╚██████╔╝██║ ╚████║╚██████╔╝
+  ╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ </div>
+
+  <h1>macOS disk cleanup for developers</h1>
+  <p class="tagline">Safety tiers, CleanHints, and stack detection — built from a real dev machine audit.</p>
+
+  <div class="install">$ brew install srmdn/tap/plong</div>
+  <br>
+  <div class="buttons">
+    <a href="https://github.com/srmdn/plong" class="btn btn-primary">&#9733; Star on GitHub</a>
+    <a href="https://github.com/srmdn/plong/releases" class="btn btn-ghost">v0.2.5</a>
+  </div>
+</div>
+
+<!-- ═══ Features ═══ -->
+
+<div class="container">
+  <div class="features">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon">&#128274;</div>
+        <h3>Safety Tiers</h3>
+        <p>T1–T4 classification with hard enforcement. Tier 3 and 4 items are locked — plong won't delete them even if you try. Every deletion is confirmed and home-directory bounded.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">&#128161;</div>
+        <h3>Clean Hints</h3>
+        <p>Locked items don't just show a lock icon. They tell you exactly how to clean them: "chrome://settings/clearBrowserData", "docker system prune -a", "Slack → Settings → Clear Cache".</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">&#129504;</div>
+        <h3>Developer-Aware</h3>
+        <p>79 known targets from a real developer machine audit. Detects your stack (Node, Go, Rust, Python, Docker) and surfaces relevant waste first. Unknown dirs get heuristic classification, not ignored.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Demo ═══ -->
+
+<div class="container">
+  <div class="demo">
+    <h2>$ plong scan</h2>
+    <div class="terminal">
+      <div class="terminal-header">
+        <span class="terminal-dot red"></span>
+        <span class="terminal-dot yellow"></span>
+        <span class="terminal-dot green"></span>
+        <span class="title">Terminal — plong scan</span>
+      </div>
+      <div class="terminal-body"><span class="muted">  scanning your mac...</span>
+
+  <span class="t1">── TIER 1: Safe caches (auto-regenerate) · 31.6 GB ──</span>
+    ✓  7.2 GB  Homebrew cache              Brew download cache              <span class="tag system">system</span>
+    ✓  4.1 GB  npm cache                    Node package manager cache       <span class="tag node">node</span>
+    ✓  2.8 GB  System caches                pip, HuggingFace, SDK caches     <span class="tag system">system</span>
+    ✓  1.9 GB  Go module cache              Downloaded Go modules            <span class="tag go">go</span>
+    ✓  1.2 GB  Bun cache                    Bun package manager cache        <span class="tag node">node</span>
+    <span class="muted">    ... +26 more (14.4 GB)</span>
+
+  <span class="t2">── TIER 2: Reinstallable toolchains · 18.3 GB ──</span>
+    ✓  5.6 GB  Node.js versions             Node version manager installs    <span class="tag node">node</span>
+    ✓  4.2 GB  Android SDK                  Android SDK and emulators        <span class="tag mobile">mobile</span>
+    ✓  2.1 GB  Cursor editor data           Cursor IDE data                  <span class="tag editor">editor</span>
+    &#128274;  8.2 GB  Docker data                  Docker images, containers         <span class="tag docker">docker</span>
+    ✓  1.7 GB  Rust toolchain               Rustup toolchain installs        <span class="tag rust">rust</span>
+    <span class="muted">    ... +9 more (8.2 GB)</span>
+
+  <span class="t3">── TIER 3: App-level cleanup required · 15.8 GB ──</span>
+    &#128274;  4.1 GB  Chrome profile               Browser profile with bookmarks    <span class="tag browser">browser</span>
+    &#128274;  3.2 GB  Slack cache                  Slack workspace cache             <span class="tag messaging">messaging</span>
+    &#128274;  2.5 GB  iOS backups                  iPhone/iPad backups               <span class="tag apple">apple</span>
+    <span class="muted">    ... +3 more (6.0 GB)</span>
+
+  <span class="t4">── TIER 4: Manual review required · 22.1 GB ──</span>
+    &#128274;  12.4 GB  Downloads folder             Review DMGs, zips, old files      <span class="tag system">system</span>
+    &#128274;  5.3 GB  VS Code workspaces            Old workspaces — review          <span class="tag editor">editor</span>
+    <span class="muted">    ... +3 more (4.4 GB)</span>
+
+  <span class="muted">  ── Code editors ──</span>
+    VS Code      45 extensions · 12 stale · 1.2 GB
+    Cursor       28 extensions · 8 stale · 890 MB
+    Windsurf     12 extensions · 3 stale · 340 MB
+    <span class="muted">  23 stale extensions total — 2.4 GB reclaimable (Tier 2)</span>
+
+  <span class="muted">  ── Stale disk images ──</span>
+    <span class="muted">  5 DMGs in ~/Downloads — 3.2 GB total</span>
+    <span class="muted">  Run rm ~/Downloads/*.dmg to remove (review first)</span>
+
+  <span class="muted">  ── Large old files (>100 MB, 90+ days) ──</span>
+    <span class="muted">    1.2 GB  ~/Downloads/old-backup.tar.gz  (modified 2025-01-15)</span>
+    <span class="muted">    450 MB  ~/Downloads/Video.mp4          (modified 2025-03-02)</span>
+
+  <span class="divider">  ────────────────────────────────────────────────</span>
+  <span class="highlight">  Total reclaimable: 85.3 GB</span>
+
+  <span class="muted">  'plong clean' — free Tiers 1-2 · 'plong hogs' — full list · docs/cleanup-guide.md</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Tiers Table ═══ -->
+
+<div class="container">
+  <div class="tiers">
+    <h2>Cleanup Tiers</h2>
+    <table class="tiers-table">
+      <thead>
+        <tr><th>Tier</th><th>Description</th><th>Examples</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tier-dot t1"></span> 1 — Safe</td>
+          <td>Auto-regenerates</td>
+          <td>npm, bun, pip, go, Homebrew caches</td>
+        </tr>
+        <tr>
+          <td><span class="tier-dot t2"></span> 2 — Reinstall</td>
+          <td>Manual recovery</td>
+          <td>nvm, rustup, Android SDK</td>
+        </tr>
+        <tr>
+          <td><span class="tier-dot t3"></span> 3 — App cleanup</td>
+          <td>Clear in-app</td>
+          <td>Chrome, Telegram, Docker</td>
+        </tr>
+        <tr>
+          <td><span class="tier-dot t4"></span> 4 — Manual review</td>
+          <td>Your files</td>
+          <td>Downloads, DMGs, old projects</td>
+        </tr>
+        <tr>
+          <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--muted)"></span> ∞ — Never</td>
+          <td>Permanent data</td>
+          <td>.ssh, .gitconfig, Keychains, iCloud</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ Install / Usage ═══ -->
+
+<div class="container">
+  <div class="install-section">
+    <h2>Install &amp; Use</h2>
+    <div class="install-grid">
+      <div class="install-card">
+        <h3>Install</h3>
+        <code>brew install srmdn/tap/plong</code>
+        <p class="desc">Requires macOS 11+. Single binary, zero dependencies.</p>
+      </div>
+      <div class="install-card">
+        <h3>Build from Source</h3>
+        <code>go install github.com/srmdn/plong/cmd/plong@latest</code>
+        <p class="desc">Requires Go 1.26+. Pure stdlib — no third-party packages.</p>
+      </div>
+      <div class="install-card">
+        <h3>Commands</h3>
+        <code>plong scan</code>
+        <code>plong clean</code>
+        <code>plong serve</code>
+        <code>plong hogs</code>
+        <code>plong history</code>
+      </div>
+      <div class="install-card">
+        <h3>Safe Preview</h3>
+        <code>plong clean --dry-run</code>
+        <p class="desc">Preview what would be deleted before touching anything.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Footer ═══ -->
+
+<div class="container">
+  <div class="footer">
+    <div class="links">
+      <a href="https://github.com/srmdn/plong">GitHub</a>
+      <a href="https://github.com/srmdn/plong/blob/main/docs/cleanup-guide.md">Cleanup Guide</a>
+      <a href="https://github.com/srmdn/plong/releases">Releases</a>
+      <a href="https://github.com/srmdn/plong/issues">Issues</a>
+    </div>
+    <p>MIT License · plong v0.2.5 · Maintained by <a href="https://github.com/srmdn">@srmdn</a></p>
+  </div>
+</div>
+
+</body>
+</html>
