@@ -2,7 +2,7 @@
 
 macOS disk cleanup tool for developers. Knows what caches are safe, what's not, and what's silently eating your disk.
 
-![](https://img.shields.io/badge/version-0.2.3-blue)
+![](https://img.shields.io/badge/version-0.2.4-blue)
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
 

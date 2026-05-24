@@ -10,7 +10,7 @@ import (
 	"github.com/srmdn/plong/internal/serve"
 )
 
-var version = "0.2.3"
+var version = "0.2.4"
 
 func main() {
 	if len(os.Args) < 2 {
