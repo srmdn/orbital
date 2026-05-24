@@ -33,6 +33,8 @@ Plong knows. Built from a real audit of a developer MacBook — understands ever
 brew install srmdn/tap/plong
 ```
 
+Formula maintained in [srmdn/homebrew-tap](https://github.com/srmdn/homebrew-tap).
+
 Or build from source (requires Go 1.26+):
 
 ```bash
