@@ -2,7 +2,7 @@
 
 A reference for what caches exist on a developer Mac, what's safe to delete, and what's not.
 
-> **plong CLI**: `plong scan` detects all 4 reclaimable tiers. `plong clean` handles Tiers 1-2 automatically. Tiers 3-4 require app-level or manual action. Tier 5 is never touched.
+> **plong CLI**: `plong scan` runs a fast first pass over a small, high-signal set of targets. `plong scan --deep` adds broader discovery, app-specific state, Docker fallback discovery, and the old-file walk. `plong clean` handles Tiers 1-2 automatically. Tiers 3-4 require app-level or manual action. Tier 5 is never touched.
 
 ---
 
@@ -18,6 +18,8 @@ A reference for what caches exist on a developer Mac, what's safe to delete, and
 | `~/Library/Caches/Homebrew/` | Brew downloaded packages | Next `brew install` |
 | `~/Library/Caches/SiriTTS/` | Text-to-speech voice data | Re-downloads as needed |
 | Various AI/ML tool caches | Transient assistant/IDE data | On next run |
+
+`~/.codex/` and `~/.claude/` are not Tier 1 caches. They can contain auth, logs, transcripts, and session state, so plong treats them as app-level review data instead of safe auto-delete cache.
 
 **Cleanup:**
 ```bash
@@ -60,6 +62,10 @@ docker system prune -a
 ### Telegram
 
 Media cache lives in `~/Library/Group Containers/*.Telegram/`. Clear from Telegram → Settings → Data and Storage.
+
+### AI CLI state
+
+`~/.codex/` and `~/.claude/` are review-only app data. Review them before deleting, and prefer removing only the specific files you no longer need.
 
 ---
 
