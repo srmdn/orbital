@@ -6,3 +6,5 @@ docs/disk-audit-reference.md
 docs/expansion-plan.md
 .sisyphus/
 scripts/
+
+.local

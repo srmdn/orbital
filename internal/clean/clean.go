@@ -244,12 +244,13 @@ func executeDelete(entries []scan.Entry, selected map[int]bool) {
 		}
 
 		fmt.Printf("    deleting %s... ", e.Label)
+		currentSize := scan.PathSizeMB(e.Path)
 		if err := os.RemoveAll(e.Path); err != nil {
 			fmt.Printf("failed (%v)\n", err)
 			failed++
 		} else {
 			fmt.Println("done")
-			freed += e.SizeMB
+			freed += currentSize
 		}
 	}
 

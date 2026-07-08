@@ -17,9 +17,14 @@ func DiscoverDocker(home string) []Entry {
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return nil
+		return discoverDockerFallback(home)
 	}
 	return parseDockerDF(string(out), home)
+}
+
+// DiscoverDockerFast skips daemon inspection and falls back to raw path sizing.
+func DiscoverDockerFast(home string) []Entry {
+	return discoverDockerFallback(home)
 }
 
 func parseDockerDF(output, home string) []Entry {
@@ -124,4 +129,38 @@ func parseDockerSize(s string) int64 {
 	default:
 		return 0
 	}
+}
+
+func discoverDockerFallback(home string) []Entry {
+	var entries []Entry
+
+	dataPath := filepath.Join(home, "Library/Containers/com.docker.docker/Data")
+	if dataSize := dirSizeMB(dataPath); dataSize > 0 {
+		entries = append(entries, Entry{
+			Path:        dataPath,
+			Label:       "Docker data",
+			Description: "Docker images, containers, volumes",
+			SizeMB:      dataSize,
+			Tier:        TierApp,
+			Cleanable:   false,
+			CleanHint:   "docker system prune -a",
+			StackTag:    "docker",
+		})
+	}
+
+	cachePath := filepath.Join(home, "Library/Caches/com.docker.docker")
+	if cacheSize := dirSizeMB(cachePath); cacheSize > 0 {
+		entries = append(entries, Entry{
+			Path:        cachePath,
+			Label:       "Docker build cache",
+			Description: "Docker build cache",
+			SizeMB:      cacheSize,
+			Tier:        TierApp,
+			Cleanable:   false,
+			CleanHint:   "docker builder prune",
+			StackTag:    "docker",
+		})
+	}
+
+	return entries
 }

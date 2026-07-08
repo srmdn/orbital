@@ -38,6 +38,16 @@
     display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px; margin-bottom: 32px;
   }
+  .scan-status {
+    background: rgba(210, 153, 34, 0.12);
+    border: 1px solid rgba(210, 153, 34, 0.35);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+  }
+  .scan-status strong { color: var(--tier2); }
+  .scan-status .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 20px;
@@ -248,7 +258,7 @@
 <div class="loading-page">
   <div class="spinner"></div>
   <p class="loading-text">plong is scanning your disk...</p>
-  <p class="loading-sub">This usually takes 10-30 seconds</p>
+  <p class="loading-sub">Fast results usually appear in a few seconds. Deep scan can take a few minutes on larger home directories.</p>
 </div>
 {{else}}
 <div class="container">
@@ -270,6 +280,18 @@
   <p>Your Mac is clean. Nothing reclaimable found.</p>
 </div>
 {{else}}
+
+{{if .DeepScanning}}
+<div class="scan-status">
+  <strong>Fast scan complete.</strong> Showing cheap-to-size targets first while deep scan checks heavy caches, app data, containers, and old files.
+  <div class="sub">Current totals do not yet include heavy cache trees such as npm, bun, Go modules, and Chrome cache. The page will refresh automatically when the deep scan completes.</div>
+</div>
+{{else if eq .ScanMode "deep"}}
+<div class="scan-status" style="background: rgba(63,185,80,0.10); border-color: rgba(63,185,80,0.35);">
+  <strong style="color: var(--tier1);">Deep scan complete.</strong>
+  <div class="sub">These totals now include heavy caches, broad discovery, containers, and large old-file analysis.</div>
+</div>
+{{end}}
 
 <div class="summary">
   <div class="card">
@@ -375,6 +397,22 @@
 </div>
 
 <script>
+  const deepScanning = {{if .DeepScanning}}true{{else}}false{{end}};
+
+  if (deepScanning) {
+    setTimeout(async () => {
+      try {
+        const resp = await fetch('/api/scan');
+        const data = await resp.json();
+        if (!data.loading && !data.DeepScanning) {
+          location.reload();
+          return;
+        }
+      } catch (e) {}
+      location.reload();
+    }, 15000);
+  }
+
   async function refresh() {
     const btn = document.querySelector('.refresh button');
     btn.textContent = '⟳ Scanning...';
@@ -414,7 +452,7 @@
         status.textContent = '❌ ' + data.error;
         document.getElementById('clean-btn').style.display = 'inline';
       } else {
-        status.textContent = '✅ Freed ' + (data.freedMB/1024).toFixed(1) + ' GB';
+        status.textContent = '✅ Freed ' + data.freedFormatted;
         setTimeout(() => location.reload(), 2000);
       }
     } catch(e) {

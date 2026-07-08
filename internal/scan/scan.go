@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 )
 
 const (
@@ -28,41 +29,113 @@ type Entry struct {
 	StackTag    string
 }
 
+type ScanMode string
+
+const (
+	ModeFast ScanMode = "fast"
+	ModeDeep ScanMode = "deep"
+)
+
 // Collect scans the home directory and returns all reclaimable entries
 // sorted by tier, stack relevance, and size.
 func Collect(home string) (entries []Entry, t1, t2, t3, t4 int64) {
+	return CollectWithMode(home, ModeDeep)
+}
+
+// CollectFast scans only the high-signal known targets for quick first-pass results.
+func CollectFast(home string) (entries []Entry, t1, t2, t3, t4 int64) {
+	return CollectWithMode(home, ModeFast)
+}
+
+// CollectWithMode scans the home directory and returns reclaimable entries
+// according to the requested scan mode.
+func CollectWithMode(home string, mode ScanMode) (entries []Entry, t1, t2, t3, t4 int64) {
 	targets := GetKnownTargets()
+	if mode == ModeFast {
+		targets = GetFastTargets()
+	}
 
 	known := map[string]bool{}
 	for _, t := range targets {
 		known[t.Path] = true
 	}
 
-	for _, t := range targets {
-		fullPath := filepath.Join(home, t.Path)
-		mb := dirSizeMB(fullPath)
-		if mb == 0 {
-			continue
-		}
-		entries = append(entries, Entry{
-			Path:        fullPath,
-			Label:       t.Label,
-			Description: t.Description,
-			SizeMB:      mb,
-			Tier:        t.Tier,
-			Cleanable:   t.Cleanable,
-			CleanHint:   t.CleanHint,
-			StackTag:    t.StackTag,
-		})
+	entries = append(entries, collectKnownEntries(home, targets)...)
+
+	if mode == ModeDeep {
+		discovered := DiscoverUnknown(home, known)
+		entries = append(entries, discovered...)
 	}
 
-	discovered := DiscoverUnknown(home, known)
-	entries = append(entries, discovered...)
-
-	dockerEntries := DiscoverDocker(home)
-	entries = append(entries, dockerEntries...)
+	if mode == ModeDeep {
+		entries = append(entries, DiscoverDocker(home)...)
+	} else {
+		entries = append(entries, DiscoverDockerFast(home)...)
+	}
 
 	stacks := DetectStacks(home)
+	return finalizeEntries(entries, stacks)
+}
+
+func collectKnownEntries(home string, targets []knownTarget) []Entry {
+	type result struct {
+		entry Entry
+		ok    bool
+	}
+
+	const workerCount = 6
+
+	jobs := make(chan knownTarget)
+	results := make(chan result, len(targets))
+
+	var wg sync.WaitGroup
+	for range workerCount {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for t := range jobs {
+				fullPath := filepath.Join(home, t.Path)
+				mb := dirSizeMB(fullPath)
+				if mb == 0 {
+					results <- result{}
+					continue
+				}
+				results <- result{
+					ok: true,
+					entry: Entry{
+						Path:        fullPath,
+						Label:       t.Label,
+						Description: t.Description,
+						SizeMB:      mb,
+						Tier:        t.Tier,
+						Cleanable:   t.Cleanable,
+						CleanHint:   t.CleanHint,
+						StackTag:    t.StackTag,
+					},
+				}
+			}
+		}()
+	}
+
+	go func() {
+		for _, t := range targets {
+			jobs <- t
+		}
+		close(jobs)
+		wg.Wait()
+		close(results)
+	}()
+
+	var entries []Entry
+	for res := range results {
+		if res.ok {
+			entries = append(entries, res.entry)
+		}
+	}
+	return entries
+}
+
+func finalizeEntries(entries []Entry, stacks []string) (sorted []Entry, t1, t2, t3, t4 int64) {
 	stackSet := map[string]bool{}
 	for _, s := range stacks {
 		stackSet[s] = true
@@ -93,7 +166,7 @@ func Collect(home string) (entries []Entry, t1, t2, t3, t4 int64) {
 		}
 	}
 
-	return
+	return entries, t1, t2, t3, t4
 }
 
 // HasGitTrap checks for an accidental .git repo in the home directory.
@@ -124,18 +197,24 @@ func TierLabel(tier int) string {
 	}
 }
 
-func Run() {
+func Run(mode ScanMode) {
 	fmt.Println()
-	fmt.Println("  scanning your mac...")
+	if mode == ModeFast {
+		fmt.Println("  fast scanning your mac...")
+	} else {
+		fmt.Println("  deep scanning your mac...")
+	}
 	fmt.Println()
 	home := os.Getenv("HOME")
 
 	checkGitTrapInternal(home)
 
-	entries, t1, t2, t3, t4 := Collect(home)
+	entries, t1, t2, t3, t4 := CollectWithMode(home, mode)
 
-	if prev, err := LoadLatest(home); err == nil {
-		printDelta(ComputeDelta(prev, entries))
+	if mode == ModeDeep {
+		if prev, err := LoadLatest(home); err == nil {
+			printDelta(ComputeDelta(prev, entries))
+		}
 	}
 
 	var t1Entries, t2Entries, t3Entries, t4Entries []Entry
@@ -174,24 +253,30 @@ func Run() {
 		first = false
 	}
 
-	editorResults := ScanEditors(home)
-	PrintEditorSection(editorResults)
+	if mode == ModeDeep {
+		editorResults := ScanEditors(home)
+		PrintEditorSection(editorResults)
 
-	if count, totalMB := ScanStaleDMGs(home); count > 0 {
-		fmt.Println("  ── Stale disk images ──")
-		fmt.Printf("  %d DMGs in ~/Downloads — %s total\n", count, FormatSize(totalMB))
-		fmt.Println("  Run rm ~/Downloads/*.dmg to remove (review first)")
-		fmt.Println()
-	}
-
-	if files := ScanLargeOldFiles(home); len(files) > 0 {
-		fmt.Println("  ── Large old files (>100 MB, 90+ days) ──")
-		for _, f := range files {
-			relPath := strings.TrimPrefix(f.Path, home)
-			relPath = strings.TrimPrefix(relPath, "/")
-			fmt.Printf("    %-6s  ~/%s  (modified %s)\n",
-				FormatSize(f.SizeMB), relPath, f.ModTime.Format("2006-01-02"))
+		if count, totalMB := ScanStaleDMGs(home); count > 0 {
+			fmt.Println("  ── Stale disk images ──")
+			fmt.Printf("  %d DMGs in ~/Downloads — %s total\n", count, FormatSize(totalMB))
+			fmt.Println("  Run rm ~/Downloads/*.dmg to remove (review first)")
+			fmt.Println()
 		}
+
+		if files := ScanLargeOldFiles(home); len(files) > 0 {
+			fmt.Println("  ── Large old files (>100 MB, 90+ days) ──")
+			for _, f := range files {
+				relPath := strings.TrimPrefix(f.Path, home)
+				relPath = strings.TrimPrefix(relPath, "/")
+				fmt.Printf("    %-6s  ~/%s  (modified %s)\n",
+					FormatSize(f.SizeMB), relPath, f.ModTime.Format("2006-01-02"))
+			}
+			fmt.Println()
+		}
+	} else {
+		fmt.Println("  Fast scan skips broad discovery, stale-file walking, and editor audits.")
+		fmt.Println("  Run 'plong scan --deep' for the full audit.")
 		fmt.Println()
 	}
 
@@ -205,7 +290,9 @@ func Run() {
 		fmt.Println("  Feedback? github.com/srmdn/plong/issues/new")
 	}
 
-	SaveSnapshot(home, entries, t1, t2, t3, t4)
+	if mode == ModeDeep {
+		SaveSnapshot(home, entries, t1, t2, t3, t4)
+	}
 }
 
 func printTier(tier int, entries []Entry) {
@@ -453,4 +540,9 @@ func dirSizeMB(path string) int64 {
 	var kb int64
 	fmt.Sscanf(fields[0], "%d", &kb)
 	return kb / 1024
+}
+
+// PathSizeMB returns the current size of a file or directory in MB.
+func PathSizeMB(path string) int64 {
+	return dirSizeMB(path)
 }

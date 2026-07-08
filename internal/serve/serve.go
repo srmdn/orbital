@@ -25,6 +25,7 @@ func Run(version string) error {
 
 	mu := &sync.RWMutex{}
 	ready := &atomic.Bool{}
+	deepRunning := &atomic.Bool{}
 	var dataPtr *pageData
 
 	tmpl := template.Must(template.New("index.html").Funcs(template.FuncMap{
@@ -68,11 +69,12 @@ func Run(version string) error {
 			return
 		}
 		ready.Store(false)
-		data := scanAndBuild(home, version)
+		data := scanAndBuild(home, version, scan.ModeFast, true)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
 		ready.Store(true)
+		startDeepRefresh(home, version, mu, ready, deepRunning, &dataPtr)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
@@ -93,6 +95,11 @@ func Run(version string) error {
 		}
 
 		mu.RLock()
+		if dataPtr == nil {
+			mu.RUnlock()
+			http.Error(w, "scan not ready", http.StatusConflict)
+			return
+		}
 		var entries []scan.Entry
 		for _, tg := range dataPtr.Tiers {
 			entries = append(entries, tg.Entries...)
@@ -111,25 +118,28 @@ func Run(version string) error {
 				failed++
 				continue
 			}
+			currentSize := scan.PathSizeMB(e.Path)
 			if err := os.RemoveAll(e.Path); err != nil {
 				failed++
 			} else {
-				freed += e.SizeMB
+				freed += currentSize
 			}
 		}
 
 		ready.Store(false)
-		data := scanAndBuild(home, version)
+		data := scanAndBuild(home, version, scan.ModeFast, true)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
 		ready.Store(true)
+		startDeepRefresh(home, version, mu, ready, deepRunning, &dataPtr)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"freedMB": freed,
-			"failed":  failed,
-			"totals":  data.Totals,
+			"freedMB":        freed,
+			"freedFormatted": scan.FormatSize(freed),
+			"failed":         failed,
+			"totals":         data.Totals,
 		})
 	})
 
@@ -149,20 +159,28 @@ func Run(version string) error {
 	}()
 
 	go func() {
-		data := scanAndBuild(home, version)
+		data := scanAndBuild(home, version, scan.ModeFast, true)
 		mu.Lock()
 		dataPtr = data
 		mu.Unlock()
 		ready.Store(true)
-		fmt.Println("  ✅ scan complete.")
-		fmt.Println("  Press Ctrl+C to stop.")
+		fmt.Println("  ⚡ fast scan complete.")
+		fmt.Println("  showing quick results in the browser.")
+		fmt.Println("  continuing deep scan for heavy caches and broader discovery...")
+		startDeepRefresh(home, version, mu, ready, deepRunning, &dataPtr)
 	}()
 
 	return http.Serve(listener, mux)
 }
 
-func scanAndBuild(home, version string) *pageData {
-	entries, t1, t2, t3, t4 := scan.Collect(home)
+func scanAndBuild(home, version string, mode scan.ScanMode, deepScanning bool) *pageData {
+	var entries []scan.Entry
+	var t1, t2, t3, t4 int64
+	if mode == scan.ModeFast {
+		entries, t1, t2, t3, t4 = scan.CollectFast(home)
+	} else {
+		entries, t1, t2, t3, t4 = scan.Collect(home)
+	}
 	gitFound, gitSize := scan.HasGitTrap(home)
 
 	var maxSize int64
@@ -198,11 +216,13 @@ func scanAndBuild(home, version string) *pageData {
 	}
 
 	return &pageData{
-		Home:     home,
-		Version:  version,
-		Tiers:    groups,
-		AllEmpty: allEmpty,
-		MaxSize:  maxSize,
+		Home:         home,
+		Version:      version,
+		Tiers:        groups,
+		AllEmpty:     allEmpty,
+		MaxSize:      maxSize,
+		DeepScanning: deepScanning,
+		ScanMode:     string(mode),
 		Totals: totals{
 			Tier1:     t1,
 			Tier2:     t2,
@@ -215,6 +235,23 @@ func scanAndBuild(home, version string) *pageData {
 	}
 }
 
+func startDeepRefresh(home, version string, mu *sync.RWMutex, ready, deepRunning *atomic.Bool, dataPtr **pageData) {
+	if !deepRunning.CompareAndSwap(false, true) {
+		return
+	}
+
+	go func() {
+		data := scanAndBuild(home, version, scan.ModeDeep, false)
+		mu.Lock()
+		*dataPtr = data
+		mu.Unlock()
+		deepRunning.Store(false)
+		ready.Store(true)
+		fmt.Println("  ✅ deep scan complete.")
+		fmt.Println("  Press Ctrl+C to stop.")
+	}()
+}
+
 type tierGroup struct {
 	Num     int
 	Label   string
@@ -223,14 +260,16 @@ type tierGroup struct {
 }
 
 type pageData struct {
-	Home     string
-	Version  string
-	Tiers    []tierGroup
-	AllEmpty bool
-	MaxSize  int64
-	Totals   totals
-	GitTrap  gitTrap
-	Loading  bool
+	Home         string
+	Version      string
+	Tiers        []tierGroup
+	AllEmpty     bool
+	MaxSize      int64
+	Totals       totals
+	GitTrap      gitTrap
+	Loading      bool
+	DeepScanning bool   `json:"DeepScanning"`
+	ScanMode     string `json:"ScanMode"`
 }
 
 type totals struct {

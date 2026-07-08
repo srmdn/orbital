@@ -13,11 +13,13 @@ func DiscoverUnknown(home string, known map[string]bool) []Entry {
 	var entries []Entry
 
 	entries = append(entries, discoverHome(home, known)...)
+	entries = append(entries, discoverDotCache(home, known)...)
 	entries = append(entries, discoverCaches(home, known)...)
 	entries = append(entries, discoverAppSupport(home, known)...)
 	entries = append(entries, discoverDeveloper(home, known)...)
 	entries = append(entries, discoverLogs(home, known)...)
 	entries = append(entries, discoverContainers(home, known)...)
+	entries = append(entries, discoverGroupContainers(home)...)
 
 	return entries
 }
@@ -52,13 +54,17 @@ func discoverHome(home string, known map[string]bool) []Entry {
 			Label:       "~/" + name,
 			Description: "large directory, manual review needed",
 			SizeMB:      mb,
-			Tier:        TierSafe,
+			Tier:        TierManual,
 			Cleanable:   false,
 			CleanHint:   "manual review — not in plong's registry",
 			StackTag:    "",
 		})
 	}
 	return entries
+}
+
+func discoverDotCache(home string, known map[string]bool) []Entry {
+	return discoverSubdir(home, ".cache", known, TierSafe, true, "cache (auto-regenerates)")
 }
 
 func discoverCaches(home string, known map[string]bool) []Entry {
@@ -88,9 +94,12 @@ func discoverContainers(home string, known map[string]bool) []Entry {
 		if !d.IsDir() {
 			continue
 		}
+		if d.Name() == "com.docker.docker" {
+			continue
+		}
 		name := d.Name() + "/"
 		relPath := "Library/Containers/" + name
-		if known[relPath] {
+		if known[relPath] || hasKnownDescendant(home, known, relPath) {
 			continue
 		}
 		full := filepath.Join(parent, d.Name())
@@ -107,6 +116,39 @@ func discoverContainers(home string, known map[string]bool) []Entry {
 			Cleanable:   false,
 			CleanHint:   "manual review — not in plong's registry",
 			StackTag:    "",
+		})
+	}
+	return entries
+}
+
+func discoverGroupContainers(home string) []Entry {
+	var entries []Entry
+	parent := filepath.Join(home, "Library/Group Containers")
+	dirs, err := os.ReadDir(parent)
+	if err != nil {
+		return entries
+	}
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		if !strings.Contains(strings.ToLower(d.Name()), "telegram") {
+			continue
+		}
+		full := filepath.Join(parent, d.Name())
+		mb := dirSizeMB(full)
+		if mb < 200 {
+			continue
+		}
+		entries = append(entries, Entry{
+			Path:        full,
+			Label:       "Telegram media",
+			Description: "Cached media and files",
+			SizeMB:      mb,
+			Tier:        TierApp,
+			Cleanable:   false,
+			CleanHint:   "Telegram → Settings → Data and Storage",
+			StackTag:    "messaging",
 		})
 	}
 	return entries
@@ -129,7 +171,7 @@ func discoverSubdir(home, relParent string, known map[string]bool, tier int, cle
 		}
 		name := d.Name() + "/"
 		relPath := relParent + "/" + name
-		if known[relPath] {
+		if known[relPath] || hasKnownDescendant(home, known, relPath) {
 			continue
 		}
 		full := filepath.Join(parent, d.Name())
@@ -149,4 +191,23 @@ func discoverSubdir(home, relParent string, known map[string]bool, tier int, cle
 		})
 	}
 	return entries
+}
+
+func hasKnownDescendant(home string, known map[string]bool, relPath string) bool {
+	prefix := relPath
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	for candidate := range known {
+		if strings.HasPrefix(candidate, prefix) {
+			if _, err := os.Stat(filepath.Join(home, candidate)); err == nil {
+				return true
+			}
+			if _, err := os.Stat(filepath.Join(home, strings.TrimSuffix(candidate, "/"))); err == nil &&
+				strings.HasPrefix(candidate, prefix) {
+				return true
+			}
+		}
+	}
+	return false
 }

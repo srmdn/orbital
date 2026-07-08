@@ -4,7 +4,7 @@ macOS disk cleanup tool for developers. Knows what caches are safe, what's not, 
 
 > Inspired by [dwcleaner](https://github.com/dwindiramadhana/dwcleaner) — the original developer-aware macOS cleaner that caught what CleanMyMac and Mole missed.
 
-![](https://img.shields.io/badge/version-0.2.5-blue)
+![](https://img.shields.io/badge/version-0.2.6-blue)
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
 
@@ -48,7 +48,8 @@ go build -o /usr/local/bin/plong ./cmd/plong
 ## Usage
 
 ```bash
-plong scan      # Full audit — finds everything reclaimable
+plong scan      # Fast audit — high-signal first pass
+plong scan --deep  # Full audit with discovery and old-file walk
 plong size      # Quick disk space check
 plong hogs      # Top 20 space consumers in ~
 plong git-trap  # Check for accidental .git in home
@@ -57,6 +58,11 @@ plong clean     # Interactive cleanup TUI
 plong clean --dry-run  # Preview without deleting
 plong serve     # Web dashboard (opens in browser)
 ```
+
+`plong scan` is intentionally conservative: it only checks a small set of
+universal, high-signal targets that are also cheap to size. Large cache trees
+such as npm, bun, Go modules, and Chrome cache stay in `--deep` so the default
+scan remains fast enough to use routinely.
 
 ### Demo
 
@@ -68,7 +74,7 @@ $ plong scan
   ── TIER 1: Safe · 31.6 GB ──
     ✓  7.2 GB  Homebrew cache              Brew download cache
     ✓  4.1 GB  npm cache                    Node package manager cache [node]
-    ✓  2.8 GB  System caches                pip, HuggingFace, SDK caches [system]
+    ✓  2.8 GB  Chrome cache                 Browser cache [browser]
     ✓  1.9 GB  Go module cache              Downloaded Go modules [go]
     ✓  1.2 GB  Bun cache                    Bun package manager cache [node]
     ... +26 more (14.4 GB)
@@ -77,9 +83,8 @@ $ plong scan
   ── TIER 2: Reinstallable · 18.3 GB ──
     ✓  5.6 GB  Node.js versions             Node version manager installs [node]
     ✓  4.2 GB  Android SDK                  Android SDK and emulators [mobile]
-    ✓  2.1 GB  Cursor editor data           Cursor IDE data [editor]
-    🔒  8.2 GB  Docker data                  Docker images, containers, volumes [docker]
-    ✓  1.7 GB  Rust toolchain               Rustup toolchain installs [rust]
+    ✓  2.1 GB  Rust toolchain               Rustup toolchain installs [rust]
+    ✓  1.7 GB  Xcode archives               Old iOS builds for manual review [apple]
     ... +9 more (8.2 GB)
     Run 'plong hogs' for full breakdown
 
@@ -122,9 +127,9 @@ $ plong scan
 
 | Tier | Description | Examples |
 |---|---|---|
-| **1 — Safe** | Auto-regenerates | npm, bun, pip, go, Homebrew caches |
+| **1 — Safe** | Auto-regenerates | npm, bun, pip, go, Homebrew, browser caches |
 | **2 — Reinstall** | Manual recovery | nvm, rustup, Android SDK |
-| **3 — App cleanup** | Clear in-app | Chrome, Telegram, Docker |
+| **3 — App cleanup** | Clear in-app or review app state | Chrome profile, Telegram media, Docker |
 | **4 — Manual review** | Your files | Downloads, DMGs, old projects |
 | **∞ — Never** | Permanent data | .ssh, .gitconfig, Keychains, iCloud |
 
