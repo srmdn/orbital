@@ -8,3 +8,4 @@ docs/expansion-plan.md
 scripts/
 
 .local
+.DS_Store

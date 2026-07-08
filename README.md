@@ -2,8 +2,6 @@
 
 macOS disk cleanup tool for developers. Knows what caches are safe, what's not, and what's silently eating your disk.
 
-> Inspired by [dwcleaner](https://github.com/dwindiramadhana/dwcleaner) — the original developer-aware macOS cleaner that caught what CleanMyMac and Mole missed.
-
 ![](https://img.shields.io/badge/version-0.2.6-blue)
 ![](https://img.shields.io/badge/go-1.26%2B-00ADD8)
 ![](https://img.shields.io/badge/platform-macOS-lightgrey)
@@ -63,6 +61,20 @@ plong serve     # Web dashboard (opens in browser)
 universal, high-signal targets that are also cheap to size. Large cache trees
 such as npm, bun, Go modules, and Chrome cache stay in `--deep` so the default
 scan remains fast enough to use routinely.
+
+## Screenshots
+
+### fast-scan
+
+fast scan screenshot
+
+![fast scan screenshot](docs/assets/fast-scan.png)
+
+### deep-scan
+
+deep scan screenshot
+
+![deep scan screenshot](docs/assets/deep-scan.png)
 
 ### Demo
 
