@@ -46,8 +46,10 @@ go run ./cmd/plong
 
 - Go stdlib only
 - Exported functions get doc comments
+- Internal helpers are uncommented (self-documenting names)
 - Use `du -sk` for directory sizing on macOS
-- Keep output formatting stable
+- No `find`, `grep`, `cat`, `sed` in Go code — use stdlib
+- Keep output formatting stable: 2-space indent, emoji in status lines only
 - Tier 1 must remain safe for programmatic deletion
 
 ## Safety rules
